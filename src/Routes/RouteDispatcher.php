@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes;
+namespace Pentagonal\Sso\Core\Routes;
 
 use Closure;
-use Pentagonal\Sso\Exceptions\RuntimeException;
-use Pentagonal\Sso\Routes\Interfaces\RouteDispatcherInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouteInterface;
+use Pentagonal\Sso\Core\Exceptions\RuntimeException;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteDispatcherInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;

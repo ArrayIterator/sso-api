@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes\Exceptions;
+namespace Pentagonal\Sso\Core\Routes\Exceptions;
 
-use Pentagonal\Sso\Exceptions\MethodNotAllowedException;
-use Pentagonal\Sso\Routes\Route;
+use Pentagonal\Sso\Core\Exceptions\MethodNotAllowedException;
+use Pentagonal\Sso\Core\Routes\Route;
 use Psr\Http\Message\ServerRequestInterface;
 use Throwable;
 use function sprintf;

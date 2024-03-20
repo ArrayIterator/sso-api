@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes;
+namespace Pentagonal\Sso\Core\Routes;
 
-use Pentagonal\Sso\Exceptions\InvalidArgumentException;
-use Pentagonal\Sso\Routes\Interfaces\RouteInterface;
+use Pentagonal\Sso\Core\Exceptions\InvalidArgumentException;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteInterface;
 use function array_key_exists;
 use function array_keys;
 use function array_merge;

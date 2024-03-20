@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Services\Interfaces;
+namespace Pentagonal\Sso\Core\Services\Interfaces;
 
 interface EventManagerInterface
 {

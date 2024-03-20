@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Utils\Http;
+namespace Pentagonal\Sso\Core\Utils\Http;
 
 /**
  * Class Code

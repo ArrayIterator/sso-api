@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes\Exceptions;
+namespace Pentagonal\Sso\Core\Routes\Exceptions;
 
-use Pentagonal\Sso\Exceptions\NotFoundException;
+use Pentagonal\Sso\Core\Exceptions\NotFoundException;
 use Psr\Http\Message\ServerRequestInterface;
 use Throwable;
 

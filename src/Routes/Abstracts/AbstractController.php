@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes\Abstracts;
+namespace Pentagonal\Sso\Core\Routes\Abstracts;
 
-use Pentagonal\Sso\Routes\Interfaces\ControllerInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\ControllerInterface;
 use Psr\Container\ContainerInterface;
 
 abstract class AbstractController implements ControllerInterface

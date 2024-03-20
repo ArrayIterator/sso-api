@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes;
+namespace Pentagonal\Sso\Core\Routes;
 
-use Pentagonal\Sso\Routes\Interfaces\RoutesInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RoutesInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;

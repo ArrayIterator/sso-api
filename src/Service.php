@@ -1,27 +1,25 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso;
+namespace Pentagonal\Sso\Core;
 
 use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\Psr7\ServerRequest;
 use League\Container\Container;
-use Pentagonal\Sso\Routes\Interfaces\ControllerInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouteDispatcherInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouteInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouteMethodInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouterInterface;
-use Pentagonal\Sso\Routes\Interfaces\RoutesInterface;
-use Pentagonal\Sso\Routes\RouteHandler;
-use Pentagonal\Sso\Routes\Traits\RouteMethodTrait;
-use Pentagonal\Sso\Services\EventManager;
-use Pentagonal\Sso\Services\Interfaces\EventManagerInterface;
-use Pentagonal\Sso\Services\Interfaces\MiddlewareServiceDispatcherInterface;
-use Pentagonal\Sso\Services\Interfaces\ResponseEmitterInterface;
-use Pentagonal\Sso\Services\MiddlewareServiceDispatcher;
-use Psr\Container\ContainerExceptionInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\ControllerInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteDispatcherInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteMethodInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouterInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RoutesInterface;
+use Pentagonal\Sso\Core\Routes\RouteHandler;
+use Pentagonal\Sso\Core\Routes\Traits\RouteMethodTrait;
+use Pentagonal\Sso\Core\Services\EventManager;
+use Pentagonal\Sso\Core\Services\Interfaces\EventManagerInterface;
+use Pentagonal\Sso\Core\Services\Interfaces\MiddlewareServiceDispatcherInterface;
+use Pentagonal\Sso\Core\Services\Interfaces\ResponseEmitterInterface;
+use Pentagonal\Sso\Core\Services\MiddlewareServiceDispatcher;
 use Psr\Container\ContainerInterface;
-use Psr\Container\NotFoundExceptionInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -207,8 +205,8 @@ class Service implements RouteMethodInterface
      *
      * @param ?ServerRequestInterface $request
      * @return ResponseInterface
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
+     * @throws \Psr\Container\ContainerExceptionInterface
+     * @throws \Psr\Container\NotFoundExceptionInterface
      */
     public function run(?ServerRequestInterface $request = null) : ResponseInterface
     {

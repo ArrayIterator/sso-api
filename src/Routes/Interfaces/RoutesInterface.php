@@ -1,17 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes\Interfaces;
+namespace Pentagonal\Sso\Core\Routes\Interfaces;
 
 use Countable;
-use Pentagonal\Sso\Routes\Exceptions\RouteMethodNotAllowedException;
-use Pentagonal\Sso\Routes\Exceptions\RouteNotFoundException;
-use Pentagonal\Sso\Services\Interfaces\EventManagerInterface;
+use Pentagonal\Sso\Core\Services\Interfaces\EventManagerInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
 
 interface RoutesInterface extends Countable
 {

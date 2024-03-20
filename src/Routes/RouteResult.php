@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes;
+namespace Pentagonal\Sso\Core\Routes;
 
-use Pentagonal\Sso\Routes\Interfaces\RouteDispatcherInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouteInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouteResultInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteDispatcherInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteResultInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 readonly class RouteResult implements RouteResultInterface

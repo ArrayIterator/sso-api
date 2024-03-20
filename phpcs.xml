@@ -25,7 +25,8 @@
     <rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
 
     <!-- Path To Check -->
-    <file>.</file>
+    <file>src/</file>
+    <file>public/index.php</file>
     <exclude-pattern>vendor/</exclude-pattern>
     <!-- constant visibility -->
     <rule ref="PSR12.Properties">
@@ -60,6 +61,8 @@
             <property name="ignoreUnusedValuesWhenOnlyKeysAreUsedInForeach" value="true"/>
         </properties>
     </rule>
+    <!-- check unused imports -->
+    <rule ref="SlevomatCodingStandard.Namespaces.UnusedUses"/>
     <!-- we use strict! disallow equal operator, use identical for better code -->
     <rule ref="SlevomatCodingStandard.Operators.DisallowEqualOperators"/>
 </ruleset>

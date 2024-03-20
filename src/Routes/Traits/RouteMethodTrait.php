@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes\Traits;
+namespace Pentagonal\Sso\Core\Routes\Traits;
 
-use Pentagonal\Sso\Routes\Interfaces\ControllerInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouteInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\ControllerInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteInterface;
 
 trait RouteMethodTrait
 {

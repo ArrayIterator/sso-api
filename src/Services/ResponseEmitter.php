@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Services;
+namespace Pentagonal\Sso\Core\Services;
 
 use GuzzleHttp\Psr7\Stream;
-use Pentagonal\Sso\Services\Interfaces\EventManagerInterface;
-use Pentagonal\Sso\Services\Interfaces\ResponseEmitterInterface;
+use Pentagonal\Sso\Core\Services\Interfaces\EventManagerInterface;
+use Pentagonal\Sso\Core\Services\Interfaces\ResponseEmitterInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 use function fastcgi_finish_request;

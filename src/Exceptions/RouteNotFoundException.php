@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Exceptions;
+namespace Pentagonal\Sso\Core\Exceptions;
 
-use Pentagonal\Sso\Exceptions\Interfaces\RouteExceptionInterface;
+use Pentagonal\Sso\Core\Exceptions\Interfaces\RouteExceptionInterface;
 use Throwable;
 
 class RouteNotFoundException extends NotFoundException implements RouteExceptionInterface

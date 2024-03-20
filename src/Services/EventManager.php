@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Services;
+namespace Pentagonal\Sso\Core\Services;
 
-use Pentagonal\Sso\Services\Interfaces\EventManagerInterface;
+use Pentagonal\Sso\Core\Services\Interfaces\EventManagerInterface;
 use function call_user_func_array;
 use function ksort;
 

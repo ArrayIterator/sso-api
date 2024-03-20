@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes\Interfaces;
+namespace Pentagonal\Sso\Core\Routes\Interfaces;
 
 use Psr\Http\Server\MiddlewareInterface;
 

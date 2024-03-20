@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes\Attributes\Traits;
+namespace Pentagonal\Sso\Core\Routes\Attributes\Traits;
 
 use function strtoupper;
 

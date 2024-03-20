@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes\Attributes\Interfaces;
+namespace Pentagonal\Sso\Core\Routes\Attributes\Interfaces;
 
 use Attribute;
 

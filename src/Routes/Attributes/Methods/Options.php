@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes\Attributes\Methods;
+namespace Pentagonal\Sso\Core\Routes\Attributes\Methods;
 
 use Attribute;
-use Pentagonal\Sso\Routes\Attributes\Interfaces;
-use Pentagonal\Sso\Routes\Attributes\Traits;
+use Pentagonal\Sso\Core\Routes\Attributes\Interfaces;
+use Pentagonal\Sso\Core\Routes\Attributes\Traits;
 
 #[Attribute(Attribute::TARGET_METHOD)]
 final readonly class Options implements Interfaces\AttributeRouteInterface

@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Services;
+namespace Pentagonal\Sso\Core\Services;
 
 use Closure;
-use Pentagonal\Sso\Services\Interfaces\MiddlewareServiceDispatcherInterface;
+use Pentagonal\Sso\Core\Services\Interfaces\MiddlewareServiceDispatcherInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;

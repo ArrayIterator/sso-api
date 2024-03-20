@@ -14,15 +14,19 @@
     "require": {
         "php" : "~8.2 || ~8.3",
         "ext-json": "*",
+        "ext-pdo": "*",
         "ext-curl": "*",
         "ext-mbstring": "*",
         "ext-openssl": "*",
         "ext-pdo_mysql": "*",
+        "ext-bcmath": "*",
         "firebase/php-jwt": "v6.10.0",
         "guzzlehttp/psr7": "^2.6.2",
+        "monolog/monolog": "^2.9.0",
         "psr/container": "^1.1 || ^2.0",
         "psr/http-server-middleware": "^1.0.2",
         "league/container": "^4.2.2",
+        "symfony/mailer": "^v7.0.4",
         "symfony/yaml": "^v7.0.3"
     },
     "require-dev": {
@@ -37,10 +41,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Pentagonal\\Sso\\": "src/"
+            "Pentagonal\\Sso\\Core\\": "src/",
+            "Pentagonal\\Sso\\App\\": "app/"
         },
         "psr-0": {
-            "Pentagonal\\Sso\\": "src/"
+            "Pentagonal\\Sso\\Core\\": "src/",
+            "Pentagonal\\Sso\\App\\": "app/"
         }
     }
 }

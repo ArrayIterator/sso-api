@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes;
+namespace Pentagonal\Sso\Core\Routes;
 
 use GuzzleHttp\Psr7\HttpFactory;
-use Pentagonal\Sso\Routes\Interfaces\RouteDispatcherInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouteInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouteResultInterface;
-use Pentagonal\Sso\Routes\Interfaces\RoutesInterface;
-use Pentagonal\Sso\Services\Interfaces\EventManagerInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteDispatcherInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteResultInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RoutesInterface;
+use Pentagonal\Sso\Core\Services\Interfaces\EventManagerInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;

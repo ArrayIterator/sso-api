@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Exceptions;
+namespace Pentagonal\Sso\Core\Exceptions;
 
 use RuntimeException as CoreException;
-use Pentagonal\Sso\Exceptions\Interfaces\SystemExceptionInterface;
+use Pentagonal\Sso\Core\Exceptions\Interfaces\SystemExceptionInterface;
 
 class RuntimeException extends CoreException implements SystemExceptionInterface
 {

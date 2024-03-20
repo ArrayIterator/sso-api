@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes;
+namespace Pentagonal\Sso\Core\Routes;
 
-use Pentagonal\Sso\Routes\Interfaces\ControllerInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouteInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouteMethodInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouterInterface;
-use Pentagonal\Sso\Routes\Traits\RouteMethodTrait;
+use Pentagonal\Sso\Core\Routes\Interfaces\ControllerInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteMethodInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouterInterface;
+use Pentagonal\Sso\Core\Routes\Traits\RouteMethodTrait;
 use function call_user_func;
 
 class RouteGroup implements Interfaces\RouteGroupInterface, RouteMethodInterface

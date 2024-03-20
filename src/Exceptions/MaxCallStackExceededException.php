@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Exceptions;
+namespace Pentagonal\Sso\Core\Exceptions;
 
-use Pentagonal\Sso\Exceptions\Interfaces\SystemExceptionInterface;
+use Pentagonal\Sso\Core\Exceptions\Interfaces\SystemExceptionInterface;
 
 class MaxCallStackExceededException extends RuntimeException implements SystemExceptionInterface
 {

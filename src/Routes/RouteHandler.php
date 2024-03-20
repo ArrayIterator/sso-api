@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Routes;
+namespace Pentagonal\Sso\Core\Routes;
 
-use Pentagonal\Sso\Exceptions\RuntimeException;
-use Pentagonal\Sso\Routes\Exceptions\RouteMethodNotAllowedException;
-use Pentagonal\Sso\Routes\Exceptions\RouteNotFoundException;
-use Pentagonal\Sso\Routes\Interfaces\RouteResultInterface;
-use Pentagonal\Sso\Routes\Interfaces\RouterInterface;
+use Pentagonal\Sso\Core\Exceptions\RuntimeException;
+use Pentagonal\Sso\Core\Routes\Exceptions\RouteMethodNotAllowedException;
+use Pentagonal\Sso\Core\Routes\Exceptions\RouteNotFoundException;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouteResultInterface;
+use Pentagonal\Sso\Core\Routes\Interfaces\RouterInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
