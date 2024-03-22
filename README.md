@@ -1,5 +1,6 @@
 # API PROJECT
 
+Single Sign On Library for PHP
 
 ## Requirements
 - Php >= 8.2
