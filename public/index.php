@@ -9,11 +9,14 @@ use function define;
 use function dirname;
 
 return (function () {
-    require dirname(__DIR__) .'/vendor/autoload.php';
 
     // phpcs:disable PSR1.Files.SideEffects
-    define('PUBLIC_PATH', __DIR__);
+
     define('ROOT_PATH', dirname(__DIR__));
+    define('APP_PATH', \ROOT_PATH . '/app');
+    define('PUBLIC_PATH', __DIR__);
+
+    require \ROOT_PATH .'/vendor/autoload.php';
 
     $service = new Service();
     return $service->run();
