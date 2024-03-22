@@ -46,6 +46,12 @@ class Service implements RouteMethodInterface
 
     private MiddlewareServiceDispatcherInterface $middlewareDispatcher;
 
+    /**
+     * Service constructor.
+     *
+     * @throws \Psr\Container\ContainerExceptionInterface
+     * @throws \Psr\Container\NotFoundExceptionInterface
+     */
     public function __construct(
         ?ContainerInterface $container = null,
         ?RouterInterface $router = null,
@@ -211,17 +217,33 @@ class Service implements RouteMethodInterface
     public function run(?ServerRequestInterface $request = null) : ResponseInterface
     {
         $request ??= ServerRequest::fromGlobals();
-        $container = $this->getContainer();
-        $request = $request->withAttribute('container', $container);
-        $response = $this->middlewareDispatcher->handle($request);
-        $emitter = $container->has(ResponseEmitterInterface::class)
-            ? $container->get(ResponseEmitterInterface::class)
-            : null;
-        $emitter = $emitter instanceof ResponseEmitterInterface
-            ? $emitter
-            : new Services\ResponseEmitter(
-                $this->eventManager
+        try {
+            $request = $request->withAttribute(
+                'worker_start',
+                microtime(true)
             );
+            $this->getEventManager()?->trigger(
+                'worker.start',
+                $this
+            );
+            $container = $this->getContainer();
+            $request = $request->withAttribute('container', $container);
+            $response = $this->middlewareDispatcher->handle($request);
+            $emitter = $container->has(ResponseEmitterInterface::class)
+                ? $container->get(ResponseEmitterInterface::class)
+                : null;
+            $emitter = $emitter instanceof ResponseEmitterInterface
+                ? $emitter
+                : new Services\ResponseEmitter(
+                    $this->eventManager
+                );
+        } finally {
+            $this->getEventManager()?->trigger(
+                'worker.end',
+                $this,
+                $response ?? null
+            );
+        }
         $emitter->emit($response);
         return $response;
     }
