@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Core\Database;
+namespace Pentagonal\Sso\Core\Database\Utils;
 
 use DateTimeImmutable;
 use DateTimeInterface;

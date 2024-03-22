@@ -5,12 +5,29 @@ namespace Pentagonal\Sso\Core\Database;
 
 use PDO;
 use PDOException;
-use PDOStatement;
+use Pentagonal\Sso\Core\Database\Builder\Expression;
+use Pentagonal\Sso\Core\Database\Builder\QueryBuilder;
+use Pentagonal\Sso\Core\Database\Connection\PDOWrapper;
+use Pentagonal\Sso\Core\Database\Connection\Statement;
 use Pentagonal\Sso\Core\Database\Exceptions\PDODatabaseException;
 use Pentagonal\Sso\Core\Database\Exceptions\RuntimeException;
+use Pentagonal\Sso\Core\Database\Schema\Schema;
+use Pentagonal\Sso\Core\Services\Interfaces\EventManagerInterface;
+use Throwable;
+use function array_shift;
+use function array_values;
 use function count;
 use function end;
+use function explode;
+use function implode;
+use function is_array;
 use function key;
+use function microtime;
+use function preg_match;
+use function reset;
+use function str_contains;
+use function trim;
+use function vsprintf;
 
 /**
  * @mixin PDOWrapper
@@ -33,16 +50,128 @@ class Connection
     protected array $logs = [];
 
     /**
-     * @param PDOWrapper $pdo
-     * @param Database $database
-     * @param bool $logQuery
+     * @var ?PDOWrapper
+     */
+    private ?PDOWrapper $pdo = null;
+
+    /**
+     * @var Configuration
+     */
+    private Configuration $configuration;
+
+    /**
+     * @var ?EventManagerInterface
+     */
+    protected ?EventManagerInterface $eventManager = null;
+
+    /**
+     * @var ?string $databaseName database name
+     */
+    protected ?string $databaseName = null;
+
+    /**
+     * @var ?string $dsn
+     */
+    private ?string $dsn = null;
+
+    private Schema $schema;
+
+    /**
+     * Connection constructor.
+     *
+     * @param Configuration $configuration
+     * @param ?EventManagerInterface $eventManager
      */
     public function __construct(
-        private readonly PDOWrapper $pdo,
-        private readonly Database $database,
-        bool $logQuery = false
+        Configuration $configuration,
+        ?EventManagerInterface $eventManager = null
     ) {
-        $this->setLogQuery($logQuery);
+        $this->setEventManager($eventManager);
+        $this->configuration = $configuration->getLockedObject();
+        $this->setLogQuery($this->configuration->isLogQuery());
+        $this->setMaxLog($this->configuration->getMaxLog());
+    }
+
+    /**
+     * @param ?EventManagerInterface $eventManager
+     */
+    public function setEventManager(?EventManagerInterface $eventManager) : void
+    {
+        $this->eventManager = $eventManager;
+    }
+
+    /**
+     * @return ?EventManagerInterface
+     */
+    public function getEventManager() : ?EventManagerInterface
+    {
+        return $this->eventManager;
+    }
+    /**
+     * @return Expression the expression builder
+     */
+    public function getExpressionBuilder(): Expression
+    {
+        return new Expression();
+    }
+
+    /**
+     * @return QueryBuilder the query builder
+     */
+    public function getQueryBuilder(): QueryBuilder
+    {
+        return new QueryBuilder($this);
+    }
+
+    public function getSchema() : Schema
+    {
+        return $this->schema ??= Schema::fromConnection($this);
+    }
+
+    /**
+     * Create a new schema
+     *
+     * @return Schema
+     */
+    public function createNewSchema() : Schema
+    {
+        return new Schema($this->getDatabaseName());
+    }
+
+    /**
+     * Quote a table
+     *
+     * @param string|array $table
+     * @return string|array
+     */
+    public function columnQuote(string|array $table): string|array
+    {
+        if (is_array($table)) {
+            foreach ($table as $key => $value) {
+                $table[$key] = $this->columnQuote($value);
+            }
+            return $table;
+        }
+        $trimmedTable = trim($table);
+        if (preg_match('~^(`.+`|[0-9]+|\*)?$~', $trimmedTable)) {
+            return $table;
+        }
+        if (str_contains($trimmedTable, '.')) {
+            return implode(
+                '.',
+                $this->columnQuote(explode('.', $table))
+            );
+        }
+
+        return "`$trimmedTable`";
+    }
+
+    /**
+     * @return bool true if the connection is alive
+     */
+    public function ping() : bool
+    {
+        return $this->exec('SELECT 1') !== false;
     }
 
     /**
@@ -94,7 +223,7 @@ class Connection
      */
     private function trigger(string $event, ...$arguments) : void
     {
-        $this->database->getEventManager()?->trigger($event, ...$arguments);
+        $this->getEventManager()?->trigger($event, ...$arguments);
     }
 
     /**
@@ -142,7 +271,78 @@ class Connection
      */
     public function getPDO() : PDOWrapper
     {
+        if ($this->pdo) {
+            return $this->pdo;
+        }
+        if (!$this->configuration->getDatabase()) {
+            throw new RuntimeException('Database name is not defined');
+        }
+
+        $this->trigger('database.connect.start', $this->configuration);
+        $modes = [
+            'NO_ENGINE_SUBSTITUTION',
+            'NO_ZERO_DATE',
+            'NO_ZERO_IN_DATE',
+            'ERROR_FOR_DIVISION_BY_ZERO'
+        ];
+        // add sql mode if strict is enabled
+        if ($this->configuration->isStrict()) {
+            $modes[] = 'STRICT_TRANS_TABLES';
+        }
+        $commands = vsprintf(
+            'SET NAMES \'%s\' COLLATE \'%s\', time_zone = \'%s\', sql_mode = \'%s\';',
+            [
+                $this->configuration->getCharset(),
+                $this->configuration->getCollation(),
+                $this->configuration->getTimezone(),
+                implode(',', $modes)
+            ]
+        );
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_PERSISTENT => $this->configuration->isPersistent(),
+            PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::MYSQL_ATTR_INIT_COMMAND => $commands,
+        ];
+        $this->getEventManager()?->trigger(
+            'database.connect.start',
+            $this->configuration,
+            $options
+        );
+
+        $this->pdo = new PDOWrapper(
+            $this->getDSN(),
+            $this->configuration->getUsername(),
+            $this->configuration->getPassword(),
+            $options
+        );
+        $this->trigger(
+            'database.connect.end',
+            $this
+        );
         return $this->pdo;
+    }
+
+    public function getDSN() : string
+    {
+        return $this->dsn ??= $this->configuration->getDsn();
+    }
+
+    public function getConfiguration(): Configuration
+    {
+        return $this->configuration;
+    }
+
+    /**
+     * @return string The database name
+     */
+    public function getDatabaseName() : string
+    {
+        if ($this->databaseName) {
+            return $this->databaseName;
+        }
+        return $this->databaseName = $this->first('SELECT DATABASE() AS `database`')['database'];
     }
 
     /**
@@ -157,7 +357,7 @@ class Connection
         // log
         $this->log('exec', ['query' => $query]);
         try {
-            $result = $this->pdo->exec($query);
+            $result = $this->getPDO()->exec($query);
             return $result;
         } catch (PDOException $e) {
             throw new PDODatabaseException($e);
@@ -175,15 +375,15 @@ class Connection
      * Prepare a statement
      *
      * @param string $query
-     * @return PDOStatement
+     * @return Statement
      */
-    public function prepare(string $query) : PDOStatement
+    public function prepare(string $query) : Statement
     {
         $this->trigger('database.prepare.start', $query);
         // log
         $this->log('prepare', ['query' => $query]);
         try {
-            $stmt = $this->pdo->prepare($query);
+            $stmt = $this->getPDO()->prepare($query);
             return $stmt;
         } finally {
             $this->logEnd(!empty($stmt));
@@ -194,18 +394,15 @@ class Connection
     /**
      * @param string $query
      * @param array $params
-     * @param-out PDOStatement $stmt
-     * @return PDOStatement|false
+     * @param-out Statement $stmt
+     * @return Statement|false
      */
-    public function query(string $query, array $params = []) : false|PDOStatement
+    public function query(string $query, array $params = []) : false|Statement
     {
         $this->trigger('database.query.start', $query, $params);
         try {
             $this->log('query', ['query' => $query, 'params' => $params]);
-            $stmt = $this->pdo->prepare($query);
-            if ($stmt === false) {
-                return false;
-            }
+            $stmt = $this->getPDO()->prepare($query);
             $status = $stmt->execute($params);
             if (!$status) {
                 $stmt->closeCursor();
@@ -221,11 +418,95 @@ class Connection
     }
 
     /**
+     * Unbuffered query
+     *
+     * @param string $query
+     * @param array $params
+     * @param callable $callback
+     * @return mixed
+     */
+    public function unbufferedQuery(
+        string $query,
+        array $params,
+        callable $callback
+    ): mixed {
+        $pdo = $this->getPDO();
+        $currentStatus = $pdo->getAttribute(
+            PDO::MYSQL_ATTR_USE_BUFFERED_QUERY
+        );
+        $pdo->setAttribute(
+            PDO::MYSQL_ATTR_USE_BUFFERED_QUERY,
+            false
+        );
+        $this->trigger('database.unbufferedQuery.start', $query, $params);
+        try {
+            $stmt = $this->query($query, $params);
+            if ($stmt instanceof Statement) {
+                return $callback($stmt, $this);
+            }
+            return false;
+        } finally {
+            $this->trigger('database.unbufferedQuery.end', $query, $params);
+            try {
+                // fallback
+                $pdo->setAttribute(
+                    PDO::MYSQL_ATTR_USE_BUFFERED_QUERY,
+                    $currentStatus
+                );
+            } catch (Throwable) {
+                // pas
+            }
+        }
+    }
+
+    /**
+     * Buffered query
+     *
+     * @param string $query
+     * @param array $params
+     * @param callable $callback
+     * @return mixed
+     */
+    public function bufferedQuery(
+        string $query,
+        array $params,
+        callable $callback
+    ) : mixed {
+        $pdo = $this->getPDO();
+        $currentStatus = $pdo->getAttribute(
+            PDO::MYSQL_ATTR_USE_BUFFERED_QUERY
+        );
+        $pdo->setAttribute(
+            PDO::MYSQL_ATTR_USE_BUFFERED_QUERY,
+            true
+        );
+        $this->trigger('database.bufferedQuery.start', $query, $params);
+        try {
+            $stmt = $this->query($query, $params);
+            if ($stmt instanceof Statement) {
+                return $callback($stmt, $this);
+            }
+            return false;
+        } finally {
+            $this->trigger('database.bufferedQuery.end', $query, $params);
+            try {
+                // fallback
+                $pdo->setAttribute(
+                    PDO::MYSQL_ATTR_USE_BUFFERED_QUERY,
+                    $currentStatus
+                );
+            } catch (Throwable) {
+                // pas
+            }
+        }
+    }
+
+    /**
      * Fetch all rows of the result
      *
      * @param string $query
      * @param array $params
-     * @param-out PDOStatement $stmt
+     * @param-out Statement $stmt
      * @return array|false The result, or false if fail
      */
     public function all(string $query, array $params = []) : array|false
@@ -234,7 +515,7 @@ class Connection
         try {
             $this->log('fetchAll', ['query' => $query, 'params' => $params]);
             $result = false;
-            if (!($stmt = $this->pdo->prepare($query))) {
+            if (!($stmt = $this->getPDO()->prepare($query))) {
                 return false;
             }
             $status = $stmt->execute($params);
@@ -247,7 +528,7 @@ class Connection
             return $result;
         } finally {
             $this->logEnd($status??false);
-            $this->trigger('database.fetchAll.end', $query, $params, $result);
+            $this->trigger('database.fetchAll.end', $query, $params, $result??false);
         }
     }
 
@@ -264,7 +545,7 @@ class Connection
         try {
             $this->log('first', ['query' => $query, 'params' => $params]);
             $result = null;
-            if (!($stmt = $this->pdo->prepare($query))) {
+            if (!($stmt = $this->getPDO()->prepare($query))) {
                 return false;
             }
             $status = $stmt->execute($params);
@@ -294,7 +575,7 @@ class Connection
         try {
             $this->log('last', ['query' => $query, 'params' => $params]);
             $result = null;
-            if (!($stmt = $this->pdo->prepare($query))) {
+            if (!($stmt = $this->getPDO()->prepare($query))) {
                 return false;
             }
             $status = $stmt->execute($params);
@@ -331,7 +612,7 @@ class Connection
         $this->trigger('database.position.start', $query, $params, $position);
         try {
             $this->log('position', ['query' => $query, 'params' => $params, 'position' => $position]);
-            if (!($stmt = $this->pdo->prepare($query))) {
+            if (!($stmt = $this->getPDO()->prepare($query))) {
                 return false;
             }
             $status = $stmt->execute($params);
@@ -359,7 +640,6 @@ class Connection
             );
         }
     }
-
 
     /**
      * @return array<array{
@@ -390,9 +670,14 @@ class Connection
      */
     public function lastInsertId() : string|false
     {
-        return $this->pdo->lastInsertId();
+        return $this->pdo?->lastInsertId()??false;
     }
 
+    /**
+     * Magic method to prevent serialization
+     *
+     * @return array
+     */
     public function __sleep(): array
     {
         throw new RuntimeException('Cannot serialize the connection');
@@ -408,7 +693,7 @@ class Connection
     public function __call(string $name, array $arguments)
     {
         try {
-            return $this->pdo->{$name}(...$arguments);
+            return $this->getPDO()->{$name}(...$arguments);
         } catch (PDOException $e) {
             throw new PDODatabaseException($e);
         }

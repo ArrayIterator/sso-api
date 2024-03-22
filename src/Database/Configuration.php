@@ -5,12 +5,17 @@ namespace Pentagonal\Sso\Core\Database;
 
 use DateTimeZone;
 use Exception;
+use Pentagonal\Sso\Core\Database\Utils\DateHelper;
 use Pentagonal\Sso\Core\Utils\Encryption\SimpleOpenSSL;
 use SensitiveParameter;
 use Serializable;
 use function date_default_timezone_get;
+use function get_object_vars;
 use function is_string;
 use function property_exists;
+use function serialize;
+use function trim;
+use function unserialize;
 use const OPENSSL_RAW_DATA;
 
 class Configuration implements Serializable
@@ -161,6 +166,12 @@ class Configuration implements Serializable
             case 'unix_socket':
                 $this->unixSocket = $value;
                 return;
+
+            case 'database':
+            case 'dbname':
+            case 'db':
+                $this->database = (string) $value;
+                return;
             case 'strict':
             case 'persistent':
                 $value = (bool) $value;
@@ -171,7 +182,6 @@ class Configuration implements Serializable
             case 'host':
             case 'username':
             case 'password':
-            case 'database':
             case 'charset':
             case 'collation':
             case 'prefix':
@@ -382,7 +392,7 @@ class Configuration implements Serializable
      */
     public function getTimezone(): string
     {
-        return $this->timezone;
+        return $this->timezone ??= $this->getServerTimezone();
     }
 
     /**

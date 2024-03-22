@@ -3,16 +3,23 @@ declare(strict_types=1);
 
 namespace Pentagonal\Sso\Core\Database\Builder;
 
-use Pentagonal\Sso\Core\Database\Database;
+use Pentagonal\Sso\Core\Database\Connection;
+use Pentagonal\Sso\Core\Database\Connection\Statement;
 use Pentagonal\Sso\Core\Database\Exceptions\QueryException;
-use Pentagonal\Sso\Core\Database\Statement;
 use Stringable;
 use function array_key_exists;
 use function array_unshift;
 use function func_get_args;
+use function implode;
 use function in_array;
 use function is_array;
+use function key;
+use function preg_match;
+use function sprintf;
+use function str_contains;
 use function str_starts_with;
+use function substr;
+use function trim;
 
 class QueryBuilder implements Stringable
 {
@@ -28,7 +35,7 @@ class QueryBuilder implements Stringable
 
     public const STATE_CLEAN = 1;
 
-    protected Database $database;
+    protected Connection $connection;
 
     protected bool $usePrefix;
 
@@ -73,17 +80,17 @@ class QueryBuilder implements Stringable
     protected string $quoteCharacter = '`';
 
     public function __construct(
-        Database $database,
+        Connection $connection,
         bool $usePrefix = true
     ) {
-        $this->database = $database;
+        $this->connection = $connection;
         $this->usePrefix = $usePrefix;
         $this->select('*');
     }
 
     public function expr(): Expression
     {
-        return $this->database->getExpressionBuilder();
+        return $this->connection->getExpressionBuilder();
     }
 
     public function getType() : int
@@ -155,9 +162,9 @@ class QueryBuilder implements Stringable
             return $this;
         }
 
-        if (in_array($partName, ['orderBy', 'groupBy', 'select', 'values'])) {
-            foreach ($sqlPart as $part) {
-                $this->parts[$partName][] = $part;
+        if (in_array($partName, ['orderBy', 'groupBy', 'values'])) {
+            foreach ($sqlPart as $key => $part) {
+                $this->parts[$partName][$key] = $part;
             }
             return $this;
         }
@@ -264,6 +271,19 @@ class QueryBuilder implements Stringable
      */
     public function table(string $table, string $alias = null) : self
     {
+        // get table and aliases
+        if (!$alias
+            && str_contains(trim($table), ' ')
+            && preg_match(
+                '~^([^\s]+)\s+(?:AS\s+)?(\S+)$~i',
+                trim($table),
+                $matches
+            )
+        ) {
+            $table = $matches[1];
+            $alias = $matches[2];
+        }
+
         $this->add('table', [
             'table' => $table,
             'alias' => $alias ?? ''
@@ -303,11 +323,15 @@ class QueryBuilder implements Stringable
      * @param string $fromAlias
      * @param string $join
      * @param string $alias
-     * @param string|null $condition
+     * @param string|Stringable|null $condition
      * @return $this
      */
-    public function innerJoin(string $fromAlias, string $join, string $alias, ?string $condition = null) : self
-    {
+    public function innerJoin(
+        string $fromAlias,
+        string $join,
+        string $alias,
+        string|Stringable|null $condition = null
+    ) : self {
         $this->add(
             'join',
             [
@@ -329,11 +353,15 @@ class QueryBuilder implements Stringable
      * @param string $fromAlias
      * @param string $join
      * @param string $alias
-     * @param string|null $condition
+     * @param string|Stringable|null $condition
      * @return $this
      */
-    public function leftJoin(string $fromAlias, string $join, string $alias, ?string $condition = null) : self
-    {
+    public function leftJoin(
+        string $fromAlias,
+        string $join,
+        string $alias,
+        string|Stringable|null $condition = null
+    ) : self {
         $this->add(
             'join',
             [
@@ -354,11 +382,15 @@ class QueryBuilder implements Stringable
      * @param string $fromAlias
      * @param string $join
      * @param string $alias
-     * @param string|null $condition
+     * @param string|Stringable|null $condition
      * @return $this
      */
-    public function rightJoin(string $fromAlias, string $join, string $alias, ?string $condition = null) : self
-    {
+    public function rightJoin(
+        string $fromAlias,
+        string $join,
+        string $alias,
+        string|Stringable|null $condition = null
+    ) : self {
         $this->add(
             'join',
             [
@@ -675,14 +707,20 @@ class QueryBuilder implements Stringable
     public function getSQLForSelect() : string
     {
         $fromClauses = [];
-        $sql = 'SELECT ' . implode(
-            ', ',
-            $this->database->columnQuote($this->parts['select'])
-        ) . ' FROM';
+        $selects = $this->parts['select'];
+        if (empty($selects)) {
+            $selects = ['*'];
+        }
+        $sql = 'SELECT '
+            . implode(
+                ', ',
+                $this->connection->columnQuote($selects)
+            )
+            . ' FROM';
         foreach ($this->parts['table'] as $from) {
-            $fromClause = $this->database->columnQuote($from['table'])
+            $fromClause = $this->connection->columnQuote($from['table'])
                 . ' ' .
-                $this->database->columnQuote($from['alias']);
+                $this->connection->columnQuote($from['alias']);
             if (isset($this->parts['join'][$from['alias']])) {
                 foreach ($this->parts['join'][$from['alias']] as $join) {
                     $fromClause .= ' ' . $join['joinType'] . ' JOIN ' . $join['joinTable'] . ' ' . $join['joinAlias'];
@@ -706,18 +744,24 @@ class QueryBuilder implements Stringable
         }
 
         $sql .= ' ' . implode(', ', $fromClauses);
-        if ($this->parts['where']) {
+        if (!empty($this->parts['where'])) {
             $sql .= ' WHERE ' . $this->parts['where'];
         }
-        if ($this->parts['groupBy']) {
+        if (!empty($this->parts['groupBy'])) {
             $sql .= ' GROUP BY ' . implode(', ', $this->parts['groupBy']);
         }
-        if ($this->parts['having']) {
-            $sql .= ' HAVING ' . $this->parts['having'];
+        if (!empty($this->parts['having'])) {
+            $sql .= ' HAVING ' . $this->parts['having'] . ' ';
         }
-        if ($this->parts['orderBy']) {
-            $sql .= ' ORDER BY ' . implode(', ', $this->parts['orderBy']);
+        if (!empty($this->parts['orderBy'])) {
+            $sql .= ' ORDER BY ';
+            $orders = [];
+            foreach ($this->parts['orderBy'] as $orderBy => $order) {
+                $orders[] = $this->connection->columnQuote($orderBy) . ' ' . $order;
+            }
+            $sql .= implode(', ', $orders);
         }
+
         if ($this->limit) {
             $sql .= ' LIMIT ' . $this->limit;
         }
@@ -732,9 +776,9 @@ class QueryBuilder implements Stringable
      */
     public function getSQLForUpdate() : string
     {
-        $table = $this->database->columnQuote($this->parts['table']['table'])
+        $table = $this->connection->columnQuote($this->parts['table']['table'])
             . ' '
-            . $this->database->columnQuote($this->parts['table']['alias']);
+            . $this->connection->columnQuote($this->parts['table']['alias']);
         $sql = 'UPDATE ' . $table;
         if ($this->parts['values']) {
             $sql .= ' SET ' . implode(', ', $this->parts['values']);
@@ -750,9 +794,9 @@ class QueryBuilder implements Stringable
      */
     public function getSQLForDelete() : string
     {
-        $table = $this->database->columnQuote($this->parts['table']['table'])
+        $table = $this->connection->columnQuote($this->parts['table']['table'])
             . ' '
-            . $this->database->columnQuote($this->parts['table']['alias']);
+            . $this->connection->columnQuote($this->parts['table']['alias']);
         $sql = 'DELETE FROM ' . $table;
         if ($this->parts['where']) {
             $sql .= ' WHERE ' . $this->parts['where'];
@@ -765,7 +809,7 @@ class QueryBuilder implements Stringable
      */
     public function getSQLForInsert() : string
     {
-        $table = $this->database->columnQuote($this->parts['table']['table']);
+        $table = $this->connection->columnQuote($this->parts['table']['table']);
         $sql = 'INSERT INTO ' . $table;
         if ($this->parts['values']) {
             $sql .= ' VALUES (' . implode(', ', $this->parts['values']) . ')';
@@ -833,7 +877,7 @@ class QueryBuilder implements Stringable
      */
     public function execute() : Statement|false
     {
-        return $this->database->query($this->getSQL(), $this->getParameters());
+        return $this->connection->query($this->getSQL(), $this->getParameters());
     }
 
     /**

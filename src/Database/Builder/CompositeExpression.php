@@ -6,7 +6,7 @@ namespace Pentagonal\Sso\Core\Database\Builder;
 use Countable;
 use Pentagonal\Sso\Core\Exceptions\InvalidArgumentException;
 use Stringable;
-use function is_bool;
+use function in_array;
 use function sprintf;
 
 /**
@@ -18,17 +18,17 @@ class CompositeExpression implements Countable, Stringable
     /**
      * Constant for an AND composite expression.
      */
-    public const TYPE_AND = 0;
+    public const TYPE_AND = 'AND';
 
     /**
      * Constant for an OR composite expression.
      */
-    public const TYPE_OR = 1;
+    public const TYPE_OR = 'OR';
 
     /**
      * @var int type
      */
-    private int $type;
+    private string $type;
 
     /**
      * @var array parts
@@ -38,10 +38,10 @@ class CompositeExpression implements Countable, Stringable
     /**
      * CompositeExpression constructor.
      *
-     * @param int $type
+     * @param string $type
      * @param array $parts
      */
-    public function __construct(int $type, array $parts = [])
+    public function __construct(string $type, array $parts = [])
     {
         if (!in_array($type, [self::TYPE_AND, self::TYPE_OR], true)) {
             throw new InvalidArgumentException(
@@ -104,22 +104,13 @@ class CompositeExpression implements Countable, Stringable
         if (count($this->parts) === 1) {
             return (string) $this->parts[0];
         }
-        $implode = '';
-        foreach ($this->parts as $part) {
-            if ($part === null) {
-                $part = 'NULL';
-            } elseif (is_bool($part)) {
-                $part = $part ? 'TRUE' : 'FALSE';
-            }
-            $implode .= ' ' . $part . ' ' . $this->type . ' ';
-        }
-        return '(' . $implode . ')';
+        return '(' . implode(') ' . $this->type . ' (', $this->parts) . ')';
     }
 
     /**
-     * @return int type
+     * @return string type
      */
-    public function getType(): int
+    public function getType(): string
     {
         return $this->type;
     }

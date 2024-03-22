@@ -1,13 +1,18 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Core\Database;
+namespace Pentagonal\Sso\Core\Database\Connection;
 
 use PDO;
 use PDOException;
 use PDOStatement;
 use Pentagonal\Sso\Core\Database\Exceptions\PDODatabaseException;
 
+/**
+ * @method Statement query(string $statement)
+ * @method Statement prepare(string $statement, array $driver_options = [])
+ * @method mixed quote(string $string, int $parameter_type = PDO::PARAM_STR)
+ */
 class PDOWrapper extends PDO
 {
     public function __construct(string $dsn, ?string $username = null, ?string $password = null, ?array $options = null)
