@@ -6,96 +6,108 @@ namespace Pentagonal\Sso\Core\Database\Schema;
 use ArrayIterator;
 use Countable;
 use IteratorAggregate;
-use JsonSerializable;
 use Traversable;
-use function count;
-use function strtolower;
 
-class ForeignKeys implements IteratorAggregate, Countable, JsonSerializable
+class ForeignKeys implements IteratorAggregate, Countable
 {
     /**
-     * @var array<string, ForeignKey>
+     * @var Table The table.
+     */
+    protected Table $table;
+
+    /**
+     * @var array<string, ForeignKey> The foreign keys.
      */
     protected array $foreignKeys = [];
 
-    public function __construct(ForeignKey ...$foreignKeys)
+    /**
+     * @param Table $table The table.
+     * @param ForeignKey ...$foreignKeys The foreign keys.
+     */
+    public function __construct(Table $table, ForeignKey ...$foreignKeys)
     {
+        $this->table = $table;
         foreach ($foreignKeys as $foreignKey) {
             $this->add($foreignKey);
         }
     }
 
-    public function has(string|ForeignKey $foreignKeyName) : bool
-    {
-        return isset($this->foreignKeys[strtolower((string) $foreignKeyName)]);
-    }
-
     /**
-     * Add Table
+     * Adds a foreign key to the table.
      *
-     * @param ForeignKey $foreignKey
-     * @return $this
+     * @param ForeignKey $foreignKey The foreign key to add.
      */
-    public function add(ForeignKey $foreignKey) : static
+    public function add(ForeignKey $foreignKey): void
     {
         $this->foreignKeys[$foreignKey->getName()] = $foreignKey;
-        return $this;
     }
 
     /**
-     * Get ForeignKey
+     * Gets all foreign keys.
      *
-     * @param string $foreignKey
-     * @return ?ForeignKey
-     */
-    public function get(string $foreignKey) : ?ForeignKey
-    {
-        return $this->foreignKeys[$foreignKey] ?? null;
-    }
-
-    /**
-     * Remove Table
-     *
-     * @param string|ForeignKey $foreignKey
-     * @return ?ForeignKey
-     */
-    public function remove(string|ForeignKey $foreignKey) : ?ForeignKey
-    {
-        $foreignKey = strtolower((string) $foreignKey);
-        if (isset($this->foreignKeys[$foreignKey])) {
-            $table = $this->foreignKeys[$foreignKey];
-            unset($this->foreignKeys[$foreignKey]);
-            return $table;
-        }
-        return null;
-    }
-
-    /**
      * @return array<string, ForeignKey>
      */
-    public function all() : array
+    public function getForeignKeys(): array
     {
         return $this->foreignKeys;
     }
 
     /**
-     * @return Traversable<string,ForeignKey>
+     * Gets a foreign key by name.
+     *
+     * @param string $name The name of the foreign key to get.
+     * @return ?ForeignKey
      */
-    public function getIterator(): Traversable
+    public function get(string $name): ?ForeignKey
     {
-        return new ArrayIterator($this->all());
+        return $this->foreignKeys[$name] ?? null;
     }
 
     /**
-     * @return int
+     * Checks if the table has a foreign key.
+     *
+     * @param string $name The name of the foreign key to check.
+     * @return bool
+     */
+    public function has(string $name): bool
+    {
+        return isset($this->foreignKeys[$name]);
+    }
+
+    /**
+     * Removes a foreign key from the table.
+     *
+     * @param string $name The name of the foreign key to remove.
+     * @return ?ForeignKey The removed foreign key, or null if it does not exist.
+     */
+    public function remove(string $name): ?ForeignKey
+    {
+        $foreignKey = $this->foreignKeys[$name]??null;
+        unset($this->foreignKeys[$name]);
+        return $foreignKey;
+    }
+
+    /**
+     * @return Table The table.
+     */
+    public function getTable(): Table
+    {
+        return $this->table;
+    }
+
+    /**
+     * @return Traversable<string, ForeignKey> The foreign keys.
+     */
+    public function getIterator(): Traversable
+    {
+        return new ArrayIterator($this->getForeignKeys());
+    }
+
+    /**
+     * @return int The number of foreign keys.
      */
     public function count(): int
     {
-        return count($this->all());
-    }
-
-    public function jsonSerialize(): array
-    {
-        return $this->all();
+        return count($this->getForeignKeys());
     }
 }

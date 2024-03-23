@@ -6,25 +6,36 @@ namespace Pentagonal\Sso\Core\Database\Schema;
 use ArrayIterator;
 use Countable;
 use IteratorAggregate;
-use JsonSerializable;
 use Traversable;
-use function count;
-use function strtolower;
 
-class Tables implements IteratorAggregate, Countable, JsonSerializable
+class Tables implements Countable, IteratorAggregate
 {
+    /**
+     * @var Schema The schema.
+     */
+    protected Schema $schema;
+
     /**
      * @var array<string, Table>
      */
     protected array $tables = [];
 
-    public function __construct(Table ...$tables)
+    /**
+     * Tables constructor.
+     *
+     * @param Schema $schema
+     */
+    public function __construct(Schema $schema)
     {
-        foreach ($tables as $table) {
-            $this->tables[strtolower($table->getName())] = $table;
-        }
+        $this->schema = $schema;
     }
 
+    /**
+     * Check if has Table
+     *
+     * @param string|Table $tableName
+     * @return bool
+     */
     public function has(string|Table $tableName) : bool
     {
         return isset($this->tables[strtolower((string) $tableName)]);
@@ -43,6 +54,17 @@ class Tables implements IteratorAggregate, Countable, JsonSerializable
     }
 
     /**
+     * Get Table
+     *
+     * @param string $table
+     * @return ?Table
+     */
+    public function get(string $table) : ?Table
+    {
+        return $this->tables[strtolower($table)] ?? null;
+    }
+
+    /**
      * Remove Table
      *
      * @param string|Table $tableName
@@ -51,29 +73,22 @@ class Tables implements IteratorAggregate, Countable, JsonSerializable
     public function remove(string|Table $tableName) : ?Table
     {
         $tableName = strtolower((string) $tableName);
-        if (isset($this->tables[$tableName])) {
-            $table = $this->tables[$tableName];
-            unset($this->tables[$tableName]);
-            return $table;
-        }
-        return null;
+        $table = $this->tables[$tableName] ?? null;
+        unset($this->tables[$tableName]);
+        return $table;
     }
 
-    /**
-     * @param string $tableName
-     * @return Table|null
-     */
-    public function get(string $tableName) : ?Table
-    {
-        return $this->tables[strtolower($tableName)] ?? null;
-    }
-
-    /**
-     * @return array<string, Table>
-     */
-    public function all() : array
+    public function getTables(): array
     {
         return $this->tables;
+    }
+
+    /**
+     * @return Schema
+     */
+    public function getSchema(): Schema
+    {
+        return $this->schema;
     }
 
     /**
@@ -81,7 +96,7 @@ class Tables implements IteratorAggregate, Countable, JsonSerializable
      */
     public function getIterator(): Traversable
     {
-        return new ArrayIterator($this->all());
+        return new ArrayIterator($this->getTables());
     }
 
     /**
@@ -89,11 +104,16 @@ class Tables implements IteratorAggregate, Countable, JsonSerializable
      */
     public function count(): int
     {
-        return count($this->all());
+        return count($this->getTables());
     }
 
-    public function jsonSerialize(): array
+    /**
+     * Clone the tables.
+     */
+    public function __clone(): void
     {
-        return $this->all();
+        foreach ($this->tables as $key => $table) {
+            $this->tables[$key] = clone $table;
+        }
     }
 }

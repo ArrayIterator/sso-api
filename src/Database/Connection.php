@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Pentagonal\Sso\Core\Database;
 
+use DateTimeZone;
 use PDO;
 use PDOException;
 use Pentagonal\Sso\Core\Database\Builder\Expression;
@@ -11,6 +12,7 @@ use Pentagonal\Sso\Core\Database\Connection\PDOWrapper;
 use Pentagonal\Sso\Core\Database\Connection\Statement;
 use Pentagonal\Sso\Core\Database\Exceptions\PDODatabaseException;
 use Pentagonal\Sso\Core\Database\Exceptions\RuntimeException;
+use Pentagonal\Sso\Core\Database\Schema\DatabaseSchemaHelper;
 use Pentagonal\Sso\Core\Database\Schema\Schema;
 use Pentagonal\Sso\Core\Services\Interfaces\EventManagerInterface;
 use Throwable;
@@ -19,6 +21,7 @@ use function array_values;
 use function count;
 use function end;
 use function explode;
+use function get_object_vars;
 use function implode;
 use function is_array;
 use function key;
@@ -74,7 +77,15 @@ class Connection
      */
     private ?string $dsn = null;
 
+    /**
+     * @var Schema
+     */
     private Schema $schema;
+
+    /**
+     * @var ?DateTimeZone
+     */
+    private ?DateTimeZone $sqlTimeZone = null;
 
     /**
      * Connection constructor.
@@ -90,6 +101,11 @@ class Connection
         $this->configuration = $configuration->getLockedObject();
         $this->setLogQuery($this->configuration->isLogQuery());
         $this->setMaxLog($this->configuration->getMaxLog());
+        try {
+            $this->sqlTimeZone = new DateTimeZone($this->configuration->getTimezone());
+        } catch (Throwable) {
+            // pass
+        }
     }
 
     /**
@@ -123,9 +139,12 @@ class Connection
         return new QueryBuilder($this);
     }
 
+    /**
+     * @return Schema
+     */
     public function getSchema() : Schema
     {
-        return $this->schema ??= Schema::fromConnection($this);
+        return $this->schema ??= DatabaseSchemaHelper::getSchema($this);
     }
 
     /**
@@ -135,7 +154,7 @@ class Connection
      */
     public function createNewSchema() : Schema
     {
-        return new Schema($this->getDatabaseName());
+        return new Schema($this);
     }
 
     /**
@@ -212,6 +231,11 @@ class Connection
     public function getMaxLog(): int
     {
         return $this->maxLog;
+    }
+
+    public function getSQLTimeZone(): DateTimeZone
+    {
+        return $this->sqlTimeZone;
     }
 
     /**
@@ -321,6 +345,19 @@ class Connection
             'database.connect.end',
             $this
         );
+        // GET SQL TIMEZONE
+        $stmt = $this->pdo->query(
+            'SELECT @@session.time_zone AS `timezone`'
+        );
+        $timezone = $stmt->fetchAssoc()['timezone'];
+        $stmt->closeCursor();
+        if ($timezone) {
+            try {
+                $this->sqlTimeZone = new DateTimeZone($timezone);
+            } catch (Throwable) {
+                // pass
+            }
+        }
         return $this->pdo;
     }
 
@@ -605,12 +642,15 @@ class Connection
      * @param string $query
      * @param array $params
      * @param int $position
-     * @return array|null|false The result, or null if fail, false if no result
+     * @return array|null|false The result, or null if failed, false if no result
      */
     public function position(string $query, array $params = [], int $position = 0) : array|null|false
     {
         $this->trigger('database.position.start', $query, $params, $position);
         try {
+            if ($position < 0) {
+                return false;
+            }
             $this->log('position', ['query' => $query, 'params' => $params, 'position' => $position]);
             if (!($stmt = $this->getPDO()->prepare($query))) {
                 return false;
@@ -620,10 +660,9 @@ class Connection
                 $stmt->closeCursor();
                 return false;
             }
-            $result = false;
-            for ($i = 0; $i < $position; $i++) {
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
-                if ($result === false) {
+            $i = 0;
+            while (($result = $stmt->fetch(PDO::FETCH_ASSOC))) {
+                if ($i++ === $position) {
                     break;
                 }
             }
@@ -697,5 +736,12 @@ class Connection
         } catch (PDOException $e) {
             throw new PDODatabaseException($e);
         }
+    }
+
+    public function __debugInfo(): array
+    {
+        $var = get_object_vars($this);
+        $var['dsn'] = '<redacted>';
+        return $var;
     }
 }

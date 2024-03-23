@@ -6,44 +6,39 @@ namespace Pentagonal\Sso\Core\Database\Schema;
 use ArrayIterator;
 use Countable;
 use IteratorAggregate;
-use JsonSerializable;
 use Traversable;
-use function count;
-use function strtolower;
 
-class Columns implements IteratorAggregate, Countable, JsonSerializable
+class Columns implements IteratorAggregate, Countable
 {
     /**
-     * @var array<string, Column>
+     * @var array<string, Column> The columns.
      */
     protected array $columns = [];
 
+    /**
+     * @var bool Whether the columns have been ordered.
+     */
+    private bool $ordered = false;
+
+    /**
+     * @param Column ...$columns
+     */
     public function __construct(Column ...$columns)
     {
         foreach ($columns as $column) {
-            $this->columns[strtolower($column->getName())] = $column;
+            $this->add($column);
         }
     }
 
     /**
-     * Check if has Column
-     *
-     * @param string|Column $tableName
-     * @return bool
-     */
-    public function has(string|Column $tableName) : bool
-    {
-        return isset($this->columns[strtolower((string) $tableName)]);
-    }
-
-    /**
-     * Add Table
+     * Add Column
      *
      * @param Column $column
      * @return $this
      */
     public function add(Column $column) : static
     {
+        $this->ordered = true;
         $this->columns[strtolower($column->getName())] = $column;
         return $this;
     }
@@ -60,48 +55,68 @@ class Columns implements IteratorAggregate, Countable, JsonSerializable
     }
 
     /**
-     * Remove Table
+     * Check if has Column
      *
-     * @param string|Column $columName
-     * @return Table|null
+     * @param string|Column $columnName
+     * @return bool
      */
-    public function remove(string|Column $columName) : ?Column
+    public function has(string|Column $columnName) : bool
     {
-        $columName = strtolower((string) $columName);
-        if (isset($this->columns[$columName])) {
-            $table = $this->columns[$columName];
-            unset($this->columns[$columName]);
-            return $table;
-        }
-        return null;
+        return isset($this->columns[strtolower((string) $columnName)]);
     }
 
     /**
-     * @return array<string, Column>
+     * Remove Column
+     *
+     * @param string $columnName
+     * @return ?Column
      */
-    public function all() : array
+    public function remove(string $columnName) : ?Column
     {
+        $columnName = strtolower($columnName);
+        $column = $this->columns[$columnName] ?? null;
+        unset($this->columns[$columnName]);
+        return $column;
+    }
+
+    /**
+     * Get Columns
+     *
+     * @return array
+     */
+    public function getColumns() : array
+    {
+        if (! $this->ordered) {
+            $this->ordered = true;
+            // sort by ordinal
+            uasort($this->columns, function (Column $a, Column $b) {
+                // sort by ordinal
+                return $a->getOrdinalPosition() <=> $b->getOrdinalPosition();
+            });
+        }
         return $this->columns;
     }
 
     /**
-     * @return Traversable<string,Column>
+     * @return Traversable<string, Column> The columns.
      */
-    public function getIterator(): Traversable
+    public function getIterator() : Traversable
     {
-        return new ArrayIterator($this->all());
+        return new ArrayIterator($this->getColumns());
     }
 
     /**
-     * @return int
+     * @return int The number of columns.
      */
     public function count(): int
     {
-        return count($this->all());
+        return count($this->columns);
     }
 
-    public function jsonSerialize(): array
+    public function __clone(): void
     {
-        return $this->all();
+        foreach ($this->columns as $key => $column) {
+            $this->columns[$key] = clone $column;
+        }
     }
 }

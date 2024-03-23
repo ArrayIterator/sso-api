@@ -3,145 +3,185 @@ declare(strict_types=1);
 
 namespace Pentagonal\Sso\Core\Database\Schema;
 
-use ArrayIterator;
-use Countable;
-use IteratorAggregate;
-use JsonSerializable;
-use Traversable;
-use function count;
-use function is_string;
+use Stringable;
 use function strtolower;
-use function strtoupper;
-use function uasort;
 
-class Index implements IteratorAggregate, Countable, JsonSerializable
+class Index implements Stringable
 {
-    /**
-     * @var string index name
-     */
-    private string $name;
+    public const FULLTEXT = 'FULLTEXT';
+    public const SPATIAL = 'SPATIAL';
+
+    public const BTREE = 'BTREE';
+
+    public const HASH = 'HASH';
 
     /**
-     * @var array<string, array{
-     *     column: Column,
-     *     isUnique: bool,
-     *     sequence: int,
-     *     collation: ?string,
-     *     cardinality: int,
-     *     subPart: ?string,
-     *     packed: mixed,
-     *     nullable: bool,
-     *     indexType: string,
+     * @var array{
+     *     name: string,
+     *     unique: bool,
+     *     type: string,
      *     comment: ?string,
-     *     ignored: bool
-     * }>
+     *     block_size: ?int,
+     *     columns: array<string, array{
+     *          name: string,
+     *          position: int,
+     *          length: ?int,
+     *          cardinality: int,
+     *          collation: ?string
+     *      }>
+     * }
      */
-    private array $definitions = [];
+    protected array $attributes = [
+        'name' => '',
+        'unique' => false,
+        'type' => self::BTREE,
+        'comment' => null,
+        'block_size' => null,
+        'columns' => [],
+    ];
 
-    public function __construct(string $name)
-    {
-        $this->name = $name;
+    public function __construct(
+        string $name,
+        bool $unique = false,
+        string $type = self::BTREE,
+        ?int $blockSize = null,
+        ?string $comment = null
+    ) {
+        $this->attributes['name'] = $name;
+        $this->attributes['unique'] = $unique;
+        $this->attributes['type'] = $type;
+        $this->attributes['block_size'] = $blockSize;
+        $this->attributes['comment'] = $comment;
     }
 
     /**
-     * Get columns
+     * Add Column
      *
-     * @return array<Column>
-     */
-    public function all() : array
-    {
-        return $this->definitions;
-    }
-
-    /**
-     * @return string index name
-     */
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    /**
-     * @param Column $column
-     * @param bool $isUnique
-     * @param int $sequence
-     * @param string $collation
+     * @param string $column
+     * @param int|null $position
+     * @param int|null $length
      * @param int $cardinality
-     * @param string|null $subPart
-     * @param string $packed
-     * @param bool|string $nullable
-     * @param string $indexType
-     * @param string|null $comment
-     * @param bool|string $ignored
+     * @param string|null $collation
      * @return $this
      */
-    public function add(
-        Column $column,
-        bool $isUnique,
-        int $sequence,
-        string $collation,
-        int $cardinality,
-        ?string $subPart,
-        mixed $packed,
-        bool|string $nullable,
-        string $indexType,
-        ?string $comment,
-        bool|string $ignored
-    ) : static {
-        $ignored = is_string($ignored)
-            ? strtolower($ignored) === 'yes'
-            : $ignored;
-        $nullable = is_string($nullable)
-            ? strtolower($nullable) === 'yes'
-            : $nullable;
-        $subPart = $subPart?:null;
-        $this->definitions[strtolower($column->getName())] = [
-            'column' => $column,
-            'isUnique' => $isUnique,
-            'sequence' => $sequence,
-            'collation' => $collation,
+    public function addColumn(
+        string $column,
+        ?int $position = null,
+        ?int $length = null,
+        int $cardinality = 0,
+        ?string $collation = null,
+    ): static {
+        $position = $position === null ? count($this->attributes['column']) : $position;
+        $this->attributes['columns'][strtolower($column)] = [
+            'name' => $column,
+            'position' => $position,
+            'length' => $length,
             'cardinality' => $cardinality,
-            'subPart' => $subPart,
-            'packed' => $packed,
-            'nullable' => $nullable,
-            'indexType' => strtoupper($indexType),
-            'comment' => $comment,
-            'ignored' => $ignored
+            'collation' => $collation,
         ];
-        uasort($this->definitions, fn($a, $b) => $a['sequence'] <=> $b['sequence']);
         return $this;
     }
 
     /**
-     * @return Traversable<string, array{
-     *      column: Column,
-     *      isUnique: bool,
-     *      sequence: int,
-     *      collation: ?string,
-     *      cardinality: int,
-     *      subPart: ?string,
-     *      packed: mixed,
-     *      nullable: bool,
-     *      indexType: string,
-     *      comment: ?string,
-     *      ignored: bool
-     *  }>
+     * Get Column
+     *
+     * @return array<string, array{
+     *     name: string,
+     *     position: int,
+     *     length: ?int
+     * }>
      */
-    public function getIterator(): Traversable
+    public function getColumns(): array
     {
-        return new ArrayIterator($this->all());
+        return $this->attributes['columns'];
     }
 
     /**
-     * @return int count of columns
+     * Remove Column
+     *
+     * @param string $column
+     * @return $this
      */
-    public function count(): int
+    public function removeColumn(string $column): static
     {
-        return count($this->definitions);
+        unset($this->attributes['columns'][strtolower($column)]);
+        return $this;
     }
 
-    public function jsonSerialize(): array
+    /**
+     * @return string name of the index
+     */
+    public function getName(): string
     {
-        return $this->all();
+        return $this->attributes['name'];
+    }
+
+    /**
+     * @return string type of the index
+     */
+    public function getType(): string
+    {
+        return $this->attributes['type'];
+    }
+
+    /**
+     * Set type
+     *
+     * @param string $type type of the index
+     * @return $this
+     */
+    public function setType(string $type): static
+    {
+        $this->attributes['type'] = $type;
+        return $this;
+    }
+
+    public function setComment(?string $comment): static
+    {
+        $this->attributes['comment'] = $comment;
+        return $this;
+    }
+
+    public function getComment(): ?string
+    {
+        return $this->attributes['comment'];
+    }
+
+    public function setBlockSize(?int $blockSize): static
+    {
+        $this->attributes['block_size'] = $blockSize;
+        return $this;
+    }
+
+    public function getBlockSize(): ?int
+    {
+        return $this->attributes['block_size'];
+    }
+
+    public function setUnique(bool $unique): static
+    {
+        $this->attributes['unique'] = $unique;
+        return $this;
+    }
+
+    public function isUnique(): bool
+    {
+        return $this->attributes['unique'];
+    }
+
+    /**
+     * @return array
+     */
+    public function getAttributes(): array
+    {
+        return $this->attributes;
+    }
+
+    /**
+     * @return string string representation of the object
+     */
+    public function __toString(): string
+    {
+        return $this->getName();
     }
 }

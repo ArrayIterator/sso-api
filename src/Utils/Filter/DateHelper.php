@@ -1,14 +1,40 @@
 <?php
 declare(strict_types=1);
 
-namespace Pentagonal\Sso\Core\Database\Utils;
+namespace Pentagonal\Sso\Core\Utils\Filter;
 
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
+use function is_int;
 
 class DateHelper
 {
+    /**
+     * @throws \Exception
+     */
+    public static function dateStringToDatetime(
+        string|int|DateTimeInterface $date,
+        ?DateTimeZone $dateTimeZone = null
+    ) {
+        if ($date instanceof DateTimeInterface) {
+            if (!$date instanceof DateTimeImmutable) {
+                $dateTimeZone = $dateTimeZone??$date->getTimezone();
+                $date = new DateTimeImmutable($date->format('c'));
+            }
+            if ($dateTimeZone) {
+                return $date->setTimezone($dateTimeZone);
+            }
+            return $date;
+        }
+        $date = is_int($date) ? date('c', $date) : $date;
+        $date = new DateTimeImmutable($date);
+        if ($dateTimeZone) {
+            return $date->setTimezone($dateTimeZone);
+        }
+        return $date;
+    }
+
     /**
      * Compare time zone
      *

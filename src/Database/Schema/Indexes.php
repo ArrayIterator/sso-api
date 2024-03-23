@@ -6,96 +6,113 @@ namespace Pentagonal\Sso\Core\Database\Schema;
 use ArrayIterator;
 use Countable;
 use IteratorAggregate;
-use JsonSerializable;
 use Traversable;
-use function count;
-use function strtolower;
 
-class Indexes implements IteratorAggregate, Countable, JsonSerializable
+class Indexes implements IteratorAggregate, Countable
 {
+    /**
+     * @var Table $table The table to which the indexes belong.
+     */
+    protected Table $table;
+
     /**
      * @var array<string, Index>
      */
     protected array $indexes = [];
 
-    public function __construct(Index ...$indexes)
-    {
+    /**
+     * @param Table $table The table to which the indexes belong.
+     * @param Index ...$indexes The indexes to add.
+     */
+    public function __construct(
+        Table $table,
+        Index ...$indexes
+    ) {
+        $this->table = $table;
         foreach ($indexes as $index) {
             $this->add($index);
         }
     }
 
-    public function has(string|Index $foreignKeyName) : bool
-    {
-        return isset($this->indexes[strtolower((string) $foreignKeyName)]);
-    }
-
     /**
-     * Add Table
+     * Adds an index to the table.
      *
-     * @param Index $index
-     * @return $this
+     * @param Index $index The index to add.
      */
-    public function add(Index $index) : static
+    public function add(Index $index): void
     {
         $this->indexes[$index->getName()] = $index;
-        return $this;
     }
 
     /**
-     * Get ForeignKey
+     * Gets all indexes.
      *
-     * @param string $index
-     * @return ?Index
-     */
-    public function get(string $index) : ?Index
-    {
-        return $this->indexes[$index] ?? null;
-    }
-
-    /**
-     * Remove Table
-     *
-     * @param string|Index $index
-     * @return ?Index
-     */
-    public function remove(string|Index $index) : ?Index
-    {
-        $index = strtolower((string) $index);
-        if (isset($this->indexes[$index])) {
-            $table = $this->indexes[$index];
-            unset($this->indexes[$index]);
-            return $table;
-        }
-        return null;
-    }
-
-    /**
      * @return array<string, Index>
      */
-    public function all() : array
+    public function getIndexes(): array
     {
         return $this->indexes;
     }
 
     /**
-     * @return Traversable<string,Index>
+     * Gets an index by name.
+     *
+     * @param string $name The name of the index to get.
+     *
+     * @return ?Index The index, or null if it does not exist.
      */
-    public function getIterator(): Traversable
+    public function get(string $name): ?Index
     {
-        return new ArrayIterator($this->all());
+        return $this->indexes[$name] ?? null;
     }
 
     /**
-     * @return int
+     * Checks if an index exists.
+     *
+     * @param string $name The name of the index to check.
+     *
+     * @return bool True if the index exists, false if not.
+     */
+    public function has(string $name): bool
+    {
+        return isset($this->indexes[$name]);
+    }
+
+    /**
+     * Removes an index.
+     *
+     * @param string $name The name of the index to remove.
+     */
+    public function remove(string $name): ?Index
+    {
+        $index = $this->indexes[$name] ?? null;
+        unset($this->indexes[$name]);
+        return $index;
+    }
+
+    /**
+     * Gets the table to which the indexes belong.
+     *
+     * @return Table The table to which the indexes belong.
+     */
+    public function getTable(): Table
+    {
+        return $this->table;
+    }
+
+    /**
+     * @return Traversable<string, Index>
+     */
+    public function getIterator(): Traversable
+    {
+        return new ArrayIterator($this->getIndexes());
+    }
+
+    /**
+     * @return int The number of indexes.
      */
     public function count(): int
     {
-        return count($this->all());
-    }
-
-    public function jsonSerialize(): array
-    {
-        return $this->all();
+        return count($this->getIndexes());
     }
 }

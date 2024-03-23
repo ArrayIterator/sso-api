@@ -3,145 +3,227 @@ declare(strict_types=1);
 
 namespace Pentagonal\Sso\Core\Database\Schema;
 
-use ArrayIterator;
-use Countable;
-use IteratorAggregate;
-use JsonSerializable;
-use Traversable;
-use function count;
+use Stringable;
+use function strtolower;
 
-class ForeignKey implements IteratorAggregate, Countable, JsonSerializable
+class ForeignKey implements Stringable
 {
-    private string $name;
+    public const ACTION_NO_ACTION = 'NO ACTION';
+
+    public const ACTION_RESTRICT = 'RESTRICT';
+
+    public const ACTION_CASCADE = 'CASCADE';
+
+    public const ACTION_SET_NULL = 'SET NULL';
+
+    public const ACTION_SET_DEFAULT = 'SET DEFAULT';
 
     /**
-     * @var array<array{
-     *     ordinalPosition: int,
-     *     database: string,
-     *     table: Table,
-     *     column: Column,
-     *     foreignDatabase: string,
-     *     foreignTable: Table,
-     *     foreignColumn: Column,
+     * @var array{
+     *     name: string,
      *     onUpdate: string,
      *     onDelete: string,
-     *     index: Index
-     * }>
+     *     columns: array<string, array{
+     *          column: string,
+     *          reference: string,
+     *          referenceColumn: string
+     *      }>
+     * }
      */
-    private array $foreignKeys = [];
-
-    public function __construct(
-        string $name
-    ) {
-        $this->name = $name;
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
-    }
+    protected array $attributes = [
+        'name' => '',
+        'onUpdate' => self::ACTION_NO_ACTION,
+        'onDelete' => self::ACTION_NO_ACTION,
+        'columns' => [],
+    ];
 
     /**
-     * @return array<array{
-     *      ordinalPosition: int,
-     *      database: string,
-     *      table: Table,
-     *      column: Column,
-     *      foreignDatabase: string,
-     *      foreignTable: Table,
-     *      foreignColumn: Column,
-     *      onUpdate: string,
-     *      onDelete: string
-     *  }>
-     */
-    public function all() : array
-    {
-        return $this->foreignKeys;
-    }
-
-    /**
-     * Add ForeignKey
+     * ForeignKey constructor.
      *
-     * @param string $database
-     * @param Table $table
-     * @param Column $column
-     * @param string $foreignDatabase
-     * @param Table $foreignTable
-     * @param Column $foreignColumn
-     * @param string $onUpdate
-     * @param string $onDelete
+     * @param string $name
+     * @param string $onUpdate action on update (default: NO ACTION)
+     * @param string $onDelete action on delete (default: NO ACTION)
+     */
+    public function __construct(
+        string $name,
+        string $onUpdate = self::ACTION_NO_ACTION,
+        string $onDelete = self::ACTION_NO_ACTION
+    ) {
+        $this->attributes['name'] = $name;
+        $this->attributes['onUpdate'] = $onUpdate;
+        $this->attributes['onDelete'] = $onDelete;
+    }
+
+    /**
+     * Add Column
+     *
+     * @param string $column
+     * @param string $reference
+     * @param string $referenceColumn
      * @param int $ordinalPosition
-     * @param Index $index
      * @return $this
      */
-    public function add(
-        string $database,
-        Table $table,
-        Column $column,
-        string $foreignDatabase,
-        Table $foreignTable,
-        Column $foreignColumn,
-        string $onUpdate,
-        string $onDelete,
-        int $ordinalPosition,
-        Index $index
-    ) : static {
-        $this->foreignKeys[] = [
-            'ordinalPosition' => $ordinalPosition,
-            'database' => $database,
-            'table' => $table,
+    public function addColumn(
+        string $column,
+        string $reference,
+        string $referenceColumn,
+        int $ordinalPosition
+    ): static {
+        $this->attributes['columns'][strtolower($column)] = [
             'column' => $column,
-            'foreignDatabase' => $foreignDatabase,
-            'foreignTable' => $foreignTable,
-            'foreignColumn' => $foreignColumn,
-            'onUpdate' => $onUpdate,
-            'onDelete' => $onDelete,
-            'index' => $index
+            'reference' => $reference,
+            'referenceColumn' => $referenceColumn,
+            'ordinalPosition' => $ordinalPosition
         ];
-        usort(
-            $this->foreignKeys,
-            fn ($a, $b) =>  $a['ordinalPosition'] <=> $b['ordinalPosition']
-        );
+        return $this;
+    }
+    public function getAttribute(string $attribute) : mixed
+    {
+        return $this->attributes[$attribute] ?? null;
+    }
+
+    /**
+     * Get Attributes
+     *
+     * @return array{
+     *      name: string,
+     *      onUpdate: string,
+     *      onDelete: string,
+     *      columns: array<string, array{
+     *           column: string,
+     *           reference: string,
+     *           referenceColumn: string
+     *       }>
+     *  }
+     */
+    public function getAttributes() : array
+    {
+        return $this->attributes;
+    }
+
+    /**
+     * Get Name
+     *
+     * @return string
+     */
+    public function getName() : string
+    {
+        return $this->attributes['name'];
+    }
+
+    /**
+     * Get On Update
+     *
+     * @return string
+     */
+    public function getOnUpdate() : string
+    {
+        return $this->attributes['onUpdate'];
+    }
+
+    /**
+     * Get On Delete
+     *
+     * @return string
+     */
+    public function getOnDelete() : string
+    {
+        return $this->attributes['onDelete'];
+    }
+
+    /**
+     * Get Columns
+     *
+     * @return array<string, array{
+     *      column: string,
+     *      reference: string,
+     *      referenceColumn: string
+     *  }>
+     */
+    public function getColumns() : array
+    {
+        return $this->attributes['columns'];
+    }
+
+    /**
+     * Get Column
+     *
+     * @param string $column
+     * @return ?array{
+     *      column: string,
+     *      reference: string,
+     *      referenceColumn: string
+     *  }
+     */
+    public function getColumn(string $column) : ?array
+    {
+        return $this->attributes['columns'][strtolower($column)] ?? null;
+    }
+
+    /**
+     * Check if it has Column
+     *
+     * @param string $column
+     * @return bool
+     */
+    public function hasColumn(string $column) : bool
+    {
+        return isset($this->attributes['columns'][strtolower($column)]);
+    }
+
+    /**
+     * Remove Column
+     *
+     * @param string $column
+     * @return $this
+     */
+    public function removeColumn(string $column) : static
+    {
+        unset($this->attributes['columns'][strtolower($column)]);
         return $this;
     }
 
     /**
-     * @return Traversable<array{
-     *     ordinalPosition: int,
-     *     database: string,
-     *     table: Table,
-     *     column: Column,
-     *     foreignDatabase: string,
-     *     foreignTable: Table,
-     *     foreignColumn: Column,
-     *     onUpdate: string,
-     *     onDelete: string,
-     *     index: Index
-     * }>
+     * Set Name
+     *
+     * @param string $name
+     * @return $this
      */
-    public function getIterator(): Traversable
+    public function setName(string $name): static
     {
-        return new ArrayIterator($this->all());
+        $this->attributes['name'] = $name;
+        return $this;
     }
 
     /**
-     * @return int count of foreign keys
+     * Set onUpdate
+     *
+     * @param string $onUpdate
+     * @return $this
      */
-    public function count(): int
+    public function setOnUpdate(string $onUpdate) : static
     {
-        return count($this->all());
+        $this->attributes['onUpdate'] = $onUpdate;
+        return $this;
     }
 
-    public function jsonSerialize(): array
+    /**
+     * Set onDelete
+     *
+     * @param string $onDelete
+     * @return $this
+     */
+    public function setOnDelete(string $onDelete) : static
     {
-        $data = $this->all();
-        foreach ($data as &$item) {
-            $item['table'] = $item['table']->getName();
-            $item['column'] = $item['column']->getName();
-            $item['foreignTable'] = $item['foreignTable']->getName();
-            $item['foreignColumn'] = $item['foreignColumn']->getName();
-            $item['index'] = $item['index']->getName();
-        }
-        return $data;
+        $this->attributes['onDelete'] = $onDelete;
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function __toString(): string
+    {
+        return $this->getName();
     }
 }

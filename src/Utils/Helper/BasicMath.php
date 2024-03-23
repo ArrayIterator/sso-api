@@ -133,7 +133,7 @@ class BasicMath
      * @param $number
      * @return ?string
      */
-    public function normalizeNumber($number) : ?string
+    public static function normalizeNumber($number) : ?string
     {
         // if number is instance of Number
         if ($number instanceof BasicMath) {
