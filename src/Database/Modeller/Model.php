@@ -1025,7 +1025,7 @@ abstract class Model extends Result
 
     /**
      * @template T of Model
-     * @param class-string<T>|T $model
+     * @param Model|class-string<T> $model
      * @return ?T
      */
     public function associateTo(Model|string $model)
@@ -1073,6 +1073,10 @@ abstract class Model extends Result
         return $model;
     }
 
+    /**
+     * @param Model $model
+     * @return ?static
+     */
     public static function associate(Model $model): ?static
     {
         $object = new static($model);
