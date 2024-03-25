@@ -16,12 +16,12 @@ SET time_zone = "+00:00";
 CREATE TABLE `accounts` (
   `id` uuid NOT NULL DEFAULT uuid() COMMENT 'account UID (UUID)',
   `app_id` uuid NOT NULL,
-  `username` varchar(120) NOT NULL COMMENT 'username',
-  `password` varchar(120) DEFAULT NULL COMMENT 'user password',
-  `status` varchar(120) DEFAULT NULL COMMENT 'user status',
-  `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'user created at',
-  `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp() COMMENT 'user updated at',
-  `deleted_at` datetime DEFAULT NULL COMMENT 'user deletd at'
+  `username` varchar(120) NOT NULL COMMENT 'account username',
+  `password` varchar(120) DEFAULT NULL COMMENT 'account password',
+  `status` varchar(120) DEFAULT NULL COMMENT 'account status',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'account created at',
+  `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp() COMMENT 'account updated at',
+  `deleted_at` datetime DEFAULT NULL COMMENT 'account deleted at'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='accounts table';
 
 -- --------------------------------------------------------

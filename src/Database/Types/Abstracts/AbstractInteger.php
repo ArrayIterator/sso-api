@@ -3,10 +3,11 @@ declare(strict_types=1);
 
 namespace Pentagonal\Sso\Core\Database\Types\Abstracts;
 
+use Pentagonal\Sso\Core\Database\Types\Interfaces\NumericTypeInterface;
 use function min;
 use function sprintf;
 
-abstract class AbstractInteger extends AbstractType
+abstract class AbstractInteger extends AbstractType implements NumericTypeInterface
 {
     /**
      * @var string
@@ -34,12 +35,12 @@ abstract class AbstractInteger extends AbstractType
     public function getDeclaration(?int $length = null): string
     {
         if ($length === null) {
-            return sprintf('%s(%d)', $this->columnType, $this->defaultLength);
+            return sprintf('%s(%d)', $this->getColumnType(), $this->defaultLength);
         }
 
         if ($this->maxLength !== null) {
             $length = min($length, $this->maxLength);
-            return sprintf('%s(%d)', $this->columnType, $length);
+            return sprintf('%s(%d)', $this->getColumnType(), $length);
         }
 
         $lengths = [

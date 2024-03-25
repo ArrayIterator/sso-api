@@ -12,7 +12,7 @@ use Pentagonal\Sso\Core\Database\Connection\PDOWrapper;
 use Pentagonal\Sso\Core\Database\Connection\Statement;
 use Pentagonal\Sso\Core\Database\Exceptions\PDODatabaseException;
 use Pentagonal\Sso\Core\Database\Exceptions\RuntimeException;
-use Pentagonal\Sso\Core\Database\Schema\DatabaseSchemaHelper;
+use Pentagonal\Sso\Core\Database\Schema\SchemaHelper;
 use Pentagonal\Sso\Core\Database\Schema\Schema;
 use Pentagonal\Sso\Core\Services\Interfaces\EventManagerInterface;
 use Throwable;
@@ -144,7 +144,7 @@ class Connection
      */
     public function getSchema() : Schema
     {
-        return $this->schema ??= DatabaseSchemaHelper::getSchema($this);
+        return $this->schema ??= SchemaHelper::getSchema($this);
     }
 
     /**

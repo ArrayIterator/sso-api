@@ -4,8 +4,9 @@ declare(strict_types=1);
 namespace Pentagonal\Sso\Core\Database\Types;
 
 use Pentagonal\Sso\Core\Database\Types\Abstracts\AbstractInteger;
+use Pentagonal\Sso\Core\Database\Types\Interfaces\NumericTypeInterface;
 
-class Bigint extends AbstractInteger
+class Bigint extends AbstractInteger implements NumericTypeInterface
 {
     /**
      * @var string

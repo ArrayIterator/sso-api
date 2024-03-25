@@ -27,6 +27,16 @@ class Schema
         $this->connection = $connection;
     }
 
+    public function getConnection(): Connection
+    {
+        return $this->connection;
+    }
+
+    public function getCreateSQL() : array
+    {
+        return SchemaHelper::getCreateSQL($this);
+    }
+
     /**
      * Gets the tables.
      *

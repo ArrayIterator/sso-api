@@ -3,9 +3,10 @@ declare(strict_types=1);
 
 namespace Pentagonal\Sso\Core\Database\Types;
 
-use Pentagonal\Sso\Core\Database\Types\Abstracts\AbstractType;
+use Pentagonal\Sso\Core\Database\Types\Abstracts\AbstractNumericScale;
+use Pentagonal\Sso\Core\Database\Types\Interfaces\NumericTypeInterface;
 
-class Decimal extends AbstractType
+class Decimal extends AbstractNumericScale implements NumericTypeInterface
 {
     /**
      * @var string
@@ -18,16 +19,12 @@ class Decimal extends AbstractType
     protected string $columnType = self::DECIMAL;
 
     /**
-     * @inheritDoc
+     * @var ?int
      */
-    public function getDeclaration(?int $length = null, ?int $decimalPoint = null) : string
-    {
-        if ($length === null) {
-            return 'DECIMAL(10, 0)';
-        }
-        if ($decimalPoint === null) {
-            $decimalPoint = 0;
-        }
-        return sprintf('DOUBLE(%d, %d)', $length, $decimalPoint);
-    }
+    protected ?int $maxLength = 65;
+
+    /**
+     * @var ?int
+     */
+    protected ?int $defaultLength = 10;
 }

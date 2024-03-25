@@ -4,12 +4,13 @@ declare(strict_types=1);
 namespace Pentagonal\Sso\Core\Database\Types\Abstracts;
 
 use DateTimeInterface;
+use Pentagonal\Sso\Core\Database\Types\Interfaces\DateTypeInterface;
 use Throwable;
 use function date;
 use function is_numeric;
 use function is_string;
 
-abstract class AbstractDateType extends AbstractType
+abstract class AbstractDateType extends AbstractType implements DateTypeInterface
 {
     /**
      * @var bool true if return type is string

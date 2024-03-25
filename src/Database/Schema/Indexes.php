@@ -6,6 +6,7 @@ namespace Pentagonal\Sso\Core\Database\Schema;
 use ArrayIterator;
 use Countable;
 use IteratorAggregate;
+use Pentagonal\Sso\Core\Database\Connection;
 use Traversable;
 
 class Indexes implements IteratorAggregate, Countable
@@ -98,6 +99,15 @@ class Indexes implements IteratorAggregate, Countable
     public function getTable(): Table
     {
         return $this->table;
+    }
+
+    public function getAlterSql(Connection $connection): string
+    {
+        $sql = '';
+        foreach ($this->getIndexes() as $index) {
+            //$sql .= $index->getCreateSql($connection);
+        }
+        return $sql;
     }
 
     /**

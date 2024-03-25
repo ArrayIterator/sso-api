@@ -6,6 +6,7 @@ namespace Pentagonal\Sso\Core\Database\Schema;
 use ArrayIterator;
 use Countable;
 use IteratorAggregate;
+use Pentagonal\Sso\Core\Database\Connection;
 use Traversable;
 
 class ForeignKeys implements IteratorAggregate, Countable
@@ -93,6 +94,15 @@ class ForeignKeys implements IteratorAggregate, Countable
     public function getTable(): Table
     {
         return $this->table;
+    }
+
+    public function getAlterSql(Connection $connection): string
+    {
+        $sql = '';
+        foreach ($this->getForeignKeys() as $foreignKey) {
+            // $sql .= $foreignKey->getCreateSql($connection) . ";\n";
+        }
+        return $sql;
     }
 
     /**

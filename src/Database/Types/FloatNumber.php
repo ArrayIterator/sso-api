@@ -3,9 +3,10 @@ declare(strict_types=1);
 
 namespace Pentagonal\Sso\Core\Database\Types;
 
-use Pentagonal\Sso\Core\Database\Types\Abstracts\AbstractType;
+use Pentagonal\Sso\Core\Database\Types\Abstracts\AbstractNumericScale;
+use Pentagonal\Sso\Core\Database\Types\Interfaces\NumericTypeInterface;
 
-class FloatNumber extends AbstractType
+class FloatNumber extends AbstractNumericScale implements NumericTypeInterface
 {
     /**
      * @var string
@@ -18,17 +19,7 @@ class FloatNumber extends AbstractType
     protected string $columnType = self::FLOAT;
 
     /**
-     * @inheritDoc
+     * @var ?int
      */
-    public function getDeclaration(?int $length = null, ?int $decimalPoint = null) : string
-    {
-        if ($length === null) {
-            return 'FLOAT';
-        }
-
-        if ($decimalPoint === null) {
-            $decimalPoint = 0;
-        }
-        return sprintf('FLOAT(%d, %d)', $length, $decimalPoint);
-    }
+    protected ?int $maxLength = 255;
 }

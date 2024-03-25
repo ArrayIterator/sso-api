@@ -201,9 +201,9 @@ class Table
     }
 
     /**
-     * @return string Engine
+     * @return ?string Engine
      */
-    public function getEngine() : string
+    public function getEngine() : ?string
     {
         return $this->attributes['engine'];
     }

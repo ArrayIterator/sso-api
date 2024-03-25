@@ -5,10 +5,10 @@ namespace Pentagonal\Sso\Core\Database\Types;
 
 use Pentagonal\Sso\Core\Database\Exceptions\TypeException;
 use Pentagonal\Sso\Core\Database\Types\Abstracts\AbstractType;
+use Stringable;
 use function addslashes;
 use function array_map;
 use function implode;
-use function is_array;
 
 class Enum extends AbstractType
 {
@@ -22,15 +22,19 @@ class Enum extends AbstractType
      */
     protected string $columnType = self::ENUM;
 
-    public function getDeclaration(?int $length = null, ?array $values = null): string
+    /**
+     * @inheritDoc
+     */
+    public function getDeclaration(?int $length = null, int|float|string|Stringable ...$values): string
     {
-        if (!is_array($values) || count($values) < 1) {
+        if (count($values) < 1) {
             throw new TypeException(
                 'Values must be an array and not empty'
             );
         }
 
         $values = array_map(function ($value) {
+            $value = (string) $value;
             return "'" . addslashes($value) . "'";
         }, $values);
 

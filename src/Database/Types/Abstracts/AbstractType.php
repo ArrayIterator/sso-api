@@ -6,8 +6,10 @@ namespace Pentagonal\Sso\Core\Database\Types\Abstracts;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Pentagonal\Sso\Core\Database\Exceptions\TypeException;
+use Pentagonal\Sso\Core\Database\Types\FloatNumber;
+use Pentagonal\Sso\Core\Database\Types\Integer;
 use Pentagonal\Sso\Core\Database\Types\Interfaces\TypeInterface;
-use Pentagonal\Sso\Core\Database\Types\Varchar;
+use Pentagonal\Sso\Core\Database\Types\Strings;
 use function array_pop;
 use function explode;
 use function get_class;
@@ -27,8 +29,9 @@ abstract class AbstractType implements TypeInterface
     public const NAME = '';
 
     private static array $types = [
-        self::VARCHAR => Varchar::class,
-        self::STRING => AbstractString::class,
+        self::FLOAT => FloatNumber::class,
+        self::INTEGER => Integer::class,
+        self::STRING => Strings::class,
     ];
 
     /**
@@ -180,7 +183,16 @@ abstract class AbstractType implements TypeInterface
             $length = $defaultLength;
         }
         if (is_array($length)) {
-            return !empty($length) ? sprintf('%s(%s)', $declaration, implode(',', $length)) : $declaration;
+            /**
+             * @var int[] $length
+             */
+            return !empty($length)
+                ? sprintf(
+                    '%s(%s)',
+                    $declaration,
+                    implode(',', $length)
+                )
+                : $declaration;
         }
         if ($length === null) {
             return $declaration;

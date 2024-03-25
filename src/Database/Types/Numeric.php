@@ -4,13 +4,14 @@ declare(strict_types=1);
 namespace Pentagonal\Sso\Core\Database\Types;
 
 use Pentagonal\Sso\Core\Database\Types\Abstracts\AbstractType;
+use Pentagonal\Sso\Core\Database\Types\Interfaces\NumericTypeInterface;
 use Pentagonal\Sso\Core\Utils\Helper\BasicMath;
 use function is_numeric;
 use function is_string;
 use function str_contains;
 use function strtolower;
 
-class Numeric extends AbstractType
+class Numeric extends AbstractType implements NumericTypeInterface
 {
     public const NAME = 'Numeric';
 

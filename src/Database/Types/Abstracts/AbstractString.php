@@ -34,12 +34,12 @@ class AbstractString extends AbstractType
     public function getDeclaration(?int $length = null): string
     {
         if ($length === null) {
-            return sprintf('%s(%d)', $this->columnType, $this->defaultLength);
+            return sprintf('%s(%d)', $this->getColumnType(), $this->defaultLength);
         }
 
         if ($this->maxLength !== null) {
             $length = min($length, $this->maxLength);
-            return sprintf('%s(%d)', $this->columnType, $length);
+            return sprintf('%s(%d)', $this->getColumnType(), $length);
         }
 
         $lengths = [
@@ -75,14 +75,14 @@ class AbstractString extends AbstractType
      * @inheritdoc
      */
 
-    public function databaseValue($value): string
+    public function databaseValue($value): ?string
     {
         if ($value === null) {
             return null;
         }
 
         if (is_bool($value)) {
-            return $value ? 'TRUE' : 'FALSE';
+            return $value ? '1' : '0';
         }
         return (string) $value;
     }

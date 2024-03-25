@@ -19,6 +19,16 @@ class ForeignKey implements Stringable
     public const ACTION_SET_DEFAULT = 'SET DEFAULT';
 
     /**
+     * @var string Database Name
+     */
+    protected string $referenceDatabase;
+
+    /**
+     * @var string Table Name
+     */
+    protected string $referenceTable;
+
+    /**
      * @var array{
      *     name: string,
      *     onUpdate: string,
@@ -41,17 +51,33 @@ class ForeignKey implements Stringable
      * ForeignKey constructor.
      *
      * @param string $name
+     * @param string $referenceDatabase
+     * @param string $referenceTable
      * @param string $onUpdate action on update (default: NO ACTION)
      * @param string $onDelete action on delete (default: NO ACTION)
      */
     public function __construct(
         string $name,
+        string $referenceDatabase,
+        string $referenceTable,
         string $onUpdate = self::ACTION_NO_ACTION,
         string $onDelete = self::ACTION_NO_ACTION
     ) {
+        $this->referenceTable = $referenceTable;
+        $this->referenceDatabase = $referenceDatabase;
         $this->attributes['name'] = $name;
         $this->attributes['onUpdate'] = $onUpdate;
         $this->attributes['onDelete'] = $onDelete;
+    }
+
+    public function getReferenceDatabase(): string
+    {
+        return $this->referenceDatabase;
+    }
+
+    public function getReferenceTable(): string
+    {
+        return $this->referenceTable;
     }
 
     /**
@@ -77,6 +103,7 @@ class ForeignKey implements Stringable
         ];
         return $this;
     }
+
     public function getAttribute(string $attribute) : mixed
     {
         return $this->attributes[$attribute] ?? null;

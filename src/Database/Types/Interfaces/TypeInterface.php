@@ -54,6 +54,21 @@ interface TypeInterface extends Stringable
     public const MULTIPOLYGON = 'multipolygon';
     public const GEOMETRYCOLLECTION = 'geometrycollection';
 
+    /**
+     * Supported collations
+     */
+    public const SUPPORTED_COLLATIONS = [
+        self::VARCHAR,
+        self::CHAR,
+        self::TINYTEXT,
+        self::TEXT,
+        self::MEDIUMTEXT,
+        self::LONGTEXT,
+    ];
+
+    /**
+     * Supported types
+     */
     public const TYPES = [
         self::VARCHAR,
         self::STRING,

@@ -12,6 +12,16 @@ use function is_string;
 
 class Column implements Stringable
 {
+    public const ATTRIBUTE_UNSIGNED = 'unsigned';
+
+    public const ATTRIBUTE_ZEROFILL = 'zerofill';
+
+    public const ATTRIBUTE_ON_UPDATE_CURRENT_TIMESTAMP = 'current_timestamp';
+
+    public const ATTRIBUTE_BINARY = 'binary';
+
+    public const ATTRIBUTE_COMPRESSED = 'compressed';
+
     /**
      * @var array{
      *     name: string,
@@ -21,17 +31,15 @@ class Column implements Stringable
      *     nullable: bool,
      *     auto_increment: bool,
      *     comment: string|null,
+     *     charset: string|null,
      *     collation: string|null,
-     *     unsigned: bool,
-     *     zerofill: bool,
+     *     attributes: string|null,
      *     precision: int|null,
      *     scale: int|null,
-     *     on_delete: string|null,
-     *     on_update: string|null,
      *     ordinal_position: int|null
      * }
      */
-    protected array $attributes = [
+    protected array $definitions = [
         'name' => '',
         'type' => null,
         'length' => null,
@@ -40,26 +48,28 @@ class Column implements Stringable
         'auto_increment' => false,
         'comment' => null,
         'collation' => null,
-        'unsigned' => false,
-        'zerofill' => false,
+        'charset' => null,
+        'attributes' => null,
         'precision' => null,
         'scale' => null,
-        'on_delete' => null,
-        'on_update' => null,
         'ordinal_position' => null,
+        'column_type' => null,
     ];
 
     /**
      * Column constructor.
      *
      * @param string $name
+     * @param string|TypeInterface $type
      * @param array $attributes
      */
     public function __construct(
         string $name,
+        string|TypeInterface $type,
         array $attributes = []
     ) {
-        $this->attributes['name'] = trim($name);
+        $this->definitions['name'] = trim($name);
+        $this->setColumnDataType($type);
         unset($attributes['name']);
         foreach ($attributes as $key => $value) {
             if (! is_string($key)) {
@@ -79,7 +89,7 @@ class Column implements Stringable
      * @return $this
      * @see TypeInterface
      */
-    public function setType(string|TypeInterface $type) : static
+    private function setColumnDataType(string|TypeInterface $type) : static
     {
         $currentType = is_string($type) ? AbstractType::getType($type) : $type;
         if (! $currentType instanceof TypeInterface) {
@@ -87,7 +97,8 @@ class Column implements Stringable
                 'Invalid Type Provided'
             );
         }
-        $this->attributes['type'] = $type;
+
+        $this->definitions['type'] = $currentType;
         return $this;
     }
 
@@ -99,7 +110,7 @@ class Column implements Stringable
      */
     public function setLength(?int $length) : static
     {
-        $this->attributes['length'] = $length;
+        $this->definitions['length'] = $length;
         return $this;
     }
 
@@ -111,7 +122,7 @@ class Column implements Stringable
      */
     public function setDefault(mixed $default) : static
     {
-        $this->attributes['default'] = $default;
+        $this->definitions['default'] = $default;
         return $this;
     }
 
@@ -123,7 +134,7 @@ class Column implements Stringable
      */
     public function setNullable(bool $nullable) : static
     {
-        $this->attributes['nullable'] = $nullable;
+        $this->definitions['nullable'] = $nullable;
         return $this;
     }
 
@@ -135,7 +146,19 @@ class Column implements Stringable
      */
     public function setAutoIncrement(bool $autoIncrement) : static
     {
-        $this->attributes['auto_increment'] = $autoIncrement;
+        $this->definitions['auto_increment'] = $autoIncrement;
+        return $this;
+    }
+
+    /**
+     * Set the column type.
+     *
+     * @param string|null $columnType The column type.
+     * @return $this
+     */
+    public function setColumnType(?string $columnType) : static
+    {
+        $this->definitions['column_type'] = $columnType;
         return $this;
     }
 
@@ -147,7 +170,21 @@ class Column implements Stringable
      */
     public function setComment(?string $comment) : static
     {
-        $this->attributes['comment'] = $comment;
+        $this->definitions['comment'] = $comment;
+        return $this;
+    }
+
+    /**
+     * Set the column charset.
+     *
+     * @param string|null $charset The column charset.
+     * @return $this
+     */
+    public function setCharset(?string $charset) : static
+    {
+        $this->definitions['charset'] = $charset
+            ? Collations::normalizeCharset($charset)
+            : null;
         return $this;
     }
 
@@ -159,27 +196,9 @@ class Column implements Stringable
      */
     public function setCollation(?string $collation) : static
     {
-        $this->attributes['collation'] = $collation
+        $this->definitions['collation'] = $collation
             ? Collations::normalizeCollation($collation)
             : null;
-        return $this;
-    }
-
-    public function setUnsigned(bool $unsigned) : static
-    {
-        $this->attributes['unsigned'] = $unsigned;
-        return $this;
-    }
-
-    /**
-     * Set the column zerofill.
-     *
-     * @param bool $zerofill The column zerofill.
-     * @return $this
-     */
-    public function setZerofill(bool $zerofill) : static
-    {
-        $this->attributes['zerofill'] = $zerofill;
         return $this;
     }
 
@@ -191,7 +210,7 @@ class Column implements Stringable
      */
     public function setPrecision(?int $precision) : static
     {
-        $this->attributes['precision'] = $precision;
+        $this->definitions['precision'] = $precision;
         return $this;
     }
 
@@ -203,31 +222,7 @@ class Column implements Stringable
      */
     public function setScale(?int $scale) : static
     {
-        $this->attributes['scale'] = $scale;
-        return $this;
-    }
-
-    /**
-     * Set the column on delete.
-     *
-     * @param string|null $onDelete The column on delete.
-     * @return $this
-     */
-    public function setOnDelete(?string $onDelete) : static
-    {
-        $this->attributes['on_delete'] = $onDelete;
-        return $this;
-    }
-
-    /**
-     * Set the column on update.
-     *
-     * @param string|null $onUpdate The column on update.
-     * @return $this
-     */
-    public function setOnUpdate(?string $onUpdate) : static
-    {
-        $this->attributes['on_update'] = $onUpdate;
+        $this->definitions['scale'] = $scale;
         return $this;
     }
 
@@ -239,7 +234,68 @@ class Column implements Stringable
      */
     public function setOrdinalPosition(?int $ordinalPosition) : static
     {
-        $this->attributes['ordinal_position'] = $ordinalPosition;
+        $this->definitions['ordinal_position'] = $ordinalPosition;
+        return $this;
+    }
+
+    /**
+     * Reset attributes
+     *
+     * @return $this
+     */
+    public function resetAttributes() : static
+    {
+        $this->definitions['attributes'] = null;
+        return $this;
+    }
+
+    /**
+     * Set attribute on update current timestamp
+     *
+     * @return $this
+     */
+    public function setOnUpdateCurrentTimestamp() : static
+    {
+        $this->definitions['attributes'] = static::ATTRIBUTE_ON_UPDATE_CURRENT_TIMESTAMP;
+        return $this;
+    }
+
+    public function setUnsigned() : static
+    {
+        $this->definitions['attributes'] = static::ATTRIBUTE_UNSIGNED;
+        return $this;
+    }
+
+    /**
+     * Set attribute zerofill
+     *
+     * @return $this
+     */
+    public function setZerofill() : static
+    {
+        $this->definitions['attributes'] = static::ATTRIBUTE_ZEROFILL;
+        return $this;
+    }
+
+    /**
+     * Set attribute binary
+     *
+     * @return $this
+     */
+    public function setBinary() : static
+    {
+        $this->definitions['attributes'] = static::ATTRIBUTE_BINARY;
+        return $this;
+    }
+
+    /**
+     * Set attribute compressed
+     *
+     * @return $this
+     */
+    public function setCompressed() : static
+    {
+        $this->definitions['attributes'] = static::ATTRIBUTE_COMPRESSED;
         return $this;
     }
 
@@ -248,7 +304,7 @@ class Column implements Stringable
      */
     public function getName() : string
     {
-        return $this->attributes['name'];
+        return $this->definitions['name'];
     }
 
     /**
@@ -256,15 +312,22 @@ class Column implements Stringable
      */
     public function getType() : ?TypeInterface
     {
-        return $this->attributes['type'];
+        return $this->definitions['type'];
     }
 
+    /**
+     * @return ?string column type
+     */
+    public function getColumnType() : ?string
+    {
+        return $this->definitions['column_type'];
+    }
     /**
      * @return ?int column length
      */
     public function getLength() : ?int
     {
-        return $this->attributes['length'];
+        return $this->definitions['length'];
     }
 
     /**
@@ -272,7 +335,7 @@ class Column implements Stringable
      */
     public function getDefault() : mixed
     {
-        return $this->attributes['default'];
+        return $this->definitions['default'];
     }
 
     /**
@@ -280,7 +343,7 @@ class Column implements Stringable
      */
     public function isNullable() : bool
     {
-        return $this->attributes['nullable'];
+        return $this->definitions['nullable'];
     }
 
     /**
@@ -288,7 +351,7 @@ class Column implements Stringable
      */
     public function isAutoIncrement() : bool
     {
-        return $this->attributes['auto_increment'];
+        return $this->definitions['auto_increment'];
     }
 
     /**
@@ -296,7 +359,12 @@ class Column implements Stringable
      */
     public function getComment() : ?string
     {
-        return $this->attributes['comment'];
+        return $this->definitions['comment'];
+    }
+
+    public function getCharset() : ?string
+    {
+        return $this->definitions['charset'];
     }
 
     /**
@@ -304,7 +372,7 @@ class Column implements Stringable
      */
     public function getCollation() : ?string
     {
-        return $this->attributes['collation'];
+        return $this->definitions['collation'];
     }
 
     /**
@@ -312,7 +380,7 @@ class Column implements Stringable
      */
     public function isUnsigned() : bool
     {
-        return $this->attributes['unsigned'];
+        return $this->definitions['attributes'] === static::ATTRIBUTE_UNSIGNED;
     }
 
     /**
@@ -320,7 +388,21 @@ class Column implements Stringable
      */
     public function isZerofill() : bool
     {
-        return $this->attributes['zerofill'];
+        return $this->definitions['attributes'] === static::ATTRIBUTE_ZEROFILL;
+    }
+    public function isBinary() : bool
+    {
+        return $this->definitions['attributes'] === static::ATTRIBUTE_BINARY;
+    }
+
+    public function isCompressed() : bool
+    {
+        return $this->definitions['attributes'] === static::ATTRIBUTE_COMPRESSED;
+    }
+
+    public function isOnUpdateCurrentTimestamp() : bool
+    {
+        return $this->definitions['attributes'] === static::ATTRIBUTE_ON_UPDATE_CURRENT_TIMESTAMP;
     }
 
     /**
@@ -328,7 +410,7 @@ class Column implements Stringable
      */
     public function getPrecision() : ?int
     {
-        return $this->attributes['precision'];
+        return $this->definitions['precision'];
     }
 
     /**
@@ -336,23 +418,7 @@ class Column implements Stringable
      */
     public function getScale() : ?int
     {
-        return $this->attributes['scale'];
-    }
-
-    /**
-     * @return ?string column on delete
-     */
-    public function getOnDelete() : ?string
-    {
-        return $this->attributes['on_delete'];
-    }
-
-    /**
-     * @return ?string column on update
-     */
-    public function getOnUpdate() : ?string
-    {
-        return $this->attributes['on_update'];
+        return $this->definitions['scale'];
     }
 
     /**
@@ -360,31 +426,29 @@ class Column implements Stringable
      */
     public function getOrdinalPosition() : ?int
     {
-        return $this->attributes['ordinal_position'];
+        return $this->definitions['ordinal_position'];
     }
 
     /**
      * @return array{
-     *      name: string,
-     *      type: TypeInterface|null,
-     *      length: int|null,
-     *      default: mixed,
-     *      nullable: bool,
-     *      auto_increment: bool,
-     *      comment: string|null,
-     *      collation: string|null,
-     *      unsigned: bool,
-     *      zerofill: bool,
-     *      precision: int|null,
-     *      scale: int|null,
-     *      on_delete: string|null,
-     *      on_update: string|null,
-     *      ordinal_position: int|null
+     *     name: string,
+     *     type: TypeInterface|null,
+     *     length: int|null,
+     *     default: mixed,
+     *     nullable: bool,
+     *     auto_increment: bool,
+     *     comment: string|null,
+     *     charset: string|null,
+     *     collation: string|null,
+     *     attributes: string|null,
+     *     precision: int|null,
+     *     scale: int|null,
+     *     ordinal_position: int|null
      *  }
      */
-    public function getAttributes() : array
+    public function getDefinitions() : array
     {
-        return $this->attributes;
+        return $this->definitions;
     }
 
     /**

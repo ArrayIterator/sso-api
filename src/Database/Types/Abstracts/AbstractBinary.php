@@ -29,11 +29,11 @@ abstract class AbstractBinary extends AbstractType
         ];
 
         if ($length === null) {
-            return sprintf('%s(%d)', $this->columnType, $this->defaultLength);
+            return sprintf('%s(%d)', $this->getColumnType(), $this->defaultLength);
         }
         if ($this->maxLength !== null) {
             $length = min($length, $this->maxLength);
-            return sprintf('%s(%d)', $this->columnType, $length);
+            return sprintf('%s(%d)', $this->getColumnType(), $length);
         }
 
         $currentType = null;

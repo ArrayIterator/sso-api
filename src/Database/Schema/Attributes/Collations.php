@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Pentagonal\Sso\Core\Database\Schema\Attributes;
 
 use function str_replace;
+use function strtolower;
 
 class Collations
 {
@@ -1107,13 +1108,26 @@ class Collations
     ];
 
     /**
+     * @param string $charset
+     * @return string|null
+     */
+    public static function normalizeCharset(string $charset) : ?string
+    {
+        $charset = strtolower(trim($charset));
+
+        return isset(self::COLLATION_CHARSET[$charset])
+            ? $charset
+            : null;
+    }
+
+    /**
      * Normalize collation
-     * If collation or charset does not exists return null
+     * If collation or charset does not exist return null
      *
      * @param string $collation
      * @return ?string
      */
-    public static function normalizeCollation(string $collation,) : ?string
+    public static function normalizeCollation(string $collation) : ?string
     {
         $collation = strtolower(trim($collation));
         // especial for bin
