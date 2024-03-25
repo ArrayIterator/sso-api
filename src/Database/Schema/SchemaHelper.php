@@ -30,6 +30,10 @@ final class SchemaHelper
      */
     protected static array $schemaCache = [];
 
+    /**
+     * @param Connection $connection
+     * @return ?Schema
+     */
     public static function getSchema(Connection $connection) : ?Schema
     {
         $dsn = strtolower($connection->getDsn());

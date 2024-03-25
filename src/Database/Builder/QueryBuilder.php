@@ -37,8 +37,6 @@ class QueryBuilder implements Stringable
 
     protected Connection $connection;
 
-    protected bool $usePrefix;
-
     /**
      * @var array{
      *     select: array<string>,
@@ -77,14 +75,10 @@ class QueryBuilder implements Stringable
 
     protected int $limit = 0;
 
-    protected string $quoteCharacter = '`';
-
     public function __construct(
-        Connection $connection,
-        bool $usePrefix = true
+        Connection $connection
     ) {
         $this->connection = $connection;
-        $this->usePrefix = $usePrefix;
         $this->select('*');
     }
 
@@ -130,17 +124,17 @@ class QueryBuilder implements Stringable
         return $this->parameters[$key] ?? null;
     }
 
-    public function offset(int $offset) : self
+    public function offset(?int $offset) : self
     {
         $this->state = self::STATE_DIRTY;
-        $this->offset = $offset;
+        $this->offset = $offset??0;
         return $this;
     }
 
-    public function limit(int $limit) : self
+    public function limit(?int $limit) : self
     {
         $this->state = self::STATE_DIRTY;
-        $this->limit = $limit;
+        $this->limit = $limit??0;
         return $this;
     }
 
@@ -850,7 +844,7 @@ class QueryBuilder implements Stringable
         string $placeholder = null
     ) : string {
         if ($placeholder === null) {
-            $placeholder = 'db_sso'. $this->counter++;
+            $placeholder = 'sso_'. $this->counter++;
         }
         if (str_starts_with($placeholder, ':')) {
             $placeholder = substr($placeholder, 1);

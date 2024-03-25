@@ -170,6 +170,14 @@ class Index implements Stringable
     }
 
     /**
+     * @return bool
+     */
+    public function isPrimary() : bool
+    {
+        return $this->isUnique() && $this->getName() === 'PRIMARY';
+    }
+
+    /**
      * @return array
      */
     public function getAttributes(): array

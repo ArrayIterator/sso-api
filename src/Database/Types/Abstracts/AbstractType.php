@@ -114,7 +114,7 @@ abstract class AbstractType implements TypeInterface
      */
     public function setDateClassName(string $dateClassName): void
     {
-        if (!is_a($dateClassName, DateTimeInterface::class)) {
+        if (!is_a($dateClassName, DateTimeInterface::class, true)) {
             throw new TypeException(
                 sprintf(
                     'Date Class Name must be instance of %s',

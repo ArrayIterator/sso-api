@@ -78,9 +78,9 @@ class Connection
     private ?string $dsn = null;
 
     /**
-     * @var Schema
+     * @var array<Schema>
      */
-    private Schema $schema;
+    private static array $schema = [];
 
     /**
      * @var ?DateTimeZone
@@ -144,7 +144,7 @@ class Connection
      */
     public function getSchema() : Schema
     {
-        return $this->schema ??= SchemaHelper::getSchema($this);
+        return SchemaHelper::getSchema($this);
     }
 
     /**

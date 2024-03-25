@@ -128,9 +128,9 @@ class Router implements RouterInterface
                         || $name === 'void' // < using echo
                         || $name === ResponseInterface::class
                         || $name === Stringable::class
-                        || is_a(ResponseInterface::class, $name)
+                        || is_a($name, ResponseInterface::class, true)
                         // stream interface also string-able
-                        || is_a(Stringable::class, $name)
+                        || is_a($name, Stringable::class, true)
                     ) {
                         $continue = true;
                         break;
