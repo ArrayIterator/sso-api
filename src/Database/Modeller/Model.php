@@ -67,11 +67,6 @@ abstract class Model extends Result
     protected ?array $primaryKey = null;
 
     /**
-     * @var ?string Result Class
-     */
-    protected ?string $resultClass = null;
-
-    /**
      * @var Connection|null Global Connection
      */
     public static ?Connection $globalConnection = null;
@@ -138,17 +133,6 @@ abstract class Model extends Result
         $this->configure($connection);
         $this->onConstruct();
         parent::__construct($this);
-    }
-
-    /**
-     * @return class-string<Result>
-     */
-    public function getResultClass() : string
-    {
-        if (!$this->resultClass || !is_a($this->resultClass, Result::class, true)) {
-            $this->resultClass = $this::class;
-        }
-        return $this->resultClass;
     }
 
     /**
@@ -490,7 +474,7 @@ abstract class Model extends Result
         }
 
         $current = $this->statement->fetchObject(
-            $this->getResultClass(),
+            $this::class,
             [$this]
         );
         if ($this->current instanceof Model) {
@@ -505,13 +489,16 @@ abstract class Model extends Result
         return $this->current;
     }
 
-    public function first()
+    /**
+     * @return ?static
+     */
+    public function first(): ?static
     {
         if ($this->current === null) {
-            return $this->fetch();
+            return $this->fetch()?:null;
         }
         if ($this->incrementResult > 1) {
-            return $this->current;
+            return $this->current?:null;
         }
         if ($this->current !== false) {
             $this->incrementResult = 0;
@@ -537,12 +524,18 @@ abstract class Model extends Result
         return $this->previous?:null;
     }
 
-    public function next()
+    /**
+     * @return ?static
+     */
+    public function next(): ?static
     {
-        return $this->fetch();
+        return $this->fetch()?:null;
     }
 
-    public function prev() : ?Result
+    /**
+     * @return ?static
+     */
+    public function prev() : ?static
     {
         return $this->previous?:null;
     }
@@ -852,6 +845,7 @@ abstract class Model extends Result
 
         $newData = [];
         foreach ($data as $key => $value) {
+            /** @noinspection DuplicatedCode */
             unset($data[$key]);
             if (!is_string($key)) {
                 continue;
@@ -945,6 +939,7 @@ abstract class Model extends Result
 
         $newData = [];
         foreach ($data as $key => $value) {
+            /** @noinspection DuplicatedCode */
             unset($data[$key]);
             if (!is_string($key)) {
                 continue;
