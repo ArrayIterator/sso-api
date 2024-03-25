@@ -5,7 +5,9 @@ namespace Pentagonal\Sso\Core\Database\Modeller;
 
 use PDOStatement;
 use function debug_backtrace;
+use function in_array;
 use function is_string;
+use function strtolower;
 use const DEBUG_BACKTRACE_IGNORE_ARGS;
 
 class Result
@@ -25,17 +27,17 @@ class Result
     /**
      * @var array <string, mixed>
      */
-    private array $data = [];
+    protected array $data = [];
 
     /**
      * @var array <string, mixed>
      */
-    private array $originalData = [];
+    protected array $originalData = [];
 
     /**
      * @var array <string, mixed>
      */
-    private array $changedData = [];
+    protected array $changedData = [];
 
     /**
      * @var Model
@@ -54,9 +56,19 @@ class Result
         $this->reconfigure();
     }
 
+    final protected function isConstructed() : bool
+    {
+        return $this->constructed;
+    }
+
     final public function isFromDatabase() : bool
     {
         return $this->fromDatabase;
+    }
+
+    protected function getLowerKeys() : array
+    {
+        return $this->lowerCaseKeys;
     }
 
     private function reconfigure() : void
@@ -93,6 +105,43 @@ class Result
         return $this->lowerCaseKeys;
     }
 
+    public function allowChange(string $column): bool
+    {
+        if (!$this->fromDatabase) {
+            return false;
+        }
+        $name = strtolower($column);
+        return isset($this->getLowerKeys()[$name])
+            || in_array($name, $this->getLowerKeys(), true);
+    }
+
+    public function getColumnName(string $column) : string
+    {
+        $column = strtolower($column);
+        return $this->getLowerKeys()[$column] ?? $column;
+    }
+
+    public function set(string $name, mixed $value) : static
+    {
+        $columName = $this->getColumnName($name);
+        if (!$this->constructed) {
+            $columName = strtolower($columName);
+            $this->lowerCaseKeys[$columName] = $columName;
+            $this->data[$columName] = $value;
+            return $this;
+        }
+        if (!$this->allowChange($columName)) {
+            return $this;
+        }
+        // check if key exists
+        if ($this->isFromDatabase() && !$this->has($columName)) {
+            return $this;
+        }
+        $columName = strtolower($columName);
+        $this->changedData[$columName] = $value;
+        return $this;
+    }
+
     final public function __set(string $name, mixed $value): void
     {
         if (!$this->fromDatabase && !$this->constructed) {
@@ -104,27 +153,8 @@ class Result
                 $this->fromDatabase = true;
             }
         }
-        if (!$this->fromDatabase && !$this->constructed) {
-            return;
-        }
 
-        // if not constructed
-        if (!$this->constructed) {
-            $this->lowerCaseKeys[strtolower($name)] = $name;
-            $this->data[$name] = $value;
-            return;
-        }
-        // check if key exists
-        if (!$this->has($name)) {
-            return;
-        }
-        $name = $this->lowerCaseKeys[strtolower($name)] ?? null;
-        if ($name === null) {
-            return;
-        }
-        if ($this->data[$name] !== $value) {
-            $this->changedData[$name] = $value;
-        }
+        $this->set($name, $value);
     }
 
     public function __get(string $name): mixed

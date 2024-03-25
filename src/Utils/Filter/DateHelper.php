@@ -20,7 +20,7 @@ class DateHelper
         if ($date instanceof DateTimeInterface) {
             if (!$date instanceof DateTimeImmutable) {
                 $dateTimeZone = $dateTimeZone??$date->getTimezone();
-                $date = new DateTimeImmutable($date->format('c'));
+                $date = DateTimeImmutable::createFromInterface($date);
             }
             if ($dateTimeZone) {
                 return $date->setTimezone($dateTimeZone);

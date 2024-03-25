@@ -104,3 +104,5 @@ config.php
 
 /storage/*
 !/storage/.htaccess
+/app/*
+!/app/.gitkeep

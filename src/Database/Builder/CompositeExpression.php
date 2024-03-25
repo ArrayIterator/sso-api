@@ -26,7 +26,7 @@ class CompositeExpression implements Countable, Stringable
     public const TYPE_OR = 'OR';
 
     /**
-     * @var int type
+     * @var string type
      */
     private string $type;
 

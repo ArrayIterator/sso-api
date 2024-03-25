@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Pentagonal\Sso\Core\Database;
 
+use DateTimeImmutable;
+use DateTimeInterface;
 use DateTimeZone;
 use PDO;
 use PDOException;
@@ -182,6 +184,13 @@ class Connection
             );
         }
 
+        if (str_contains($table, ' ')
+            && preg_match('~^(\S+)\s+(?:as\s+|)(\S+)\s*$~i', $trimmedTable, $match)
+        ) {
+            return $this->columnQuote($match[1])
+               . ' AS '
+               . $this->columnQuote($match[2]);
+        }
         return "`$trimmedTable`";
     }
 
@@ -359,6 +368,21 @@ class Connection
             }
         }
         return $this->pdo;
+    }
+
+    /**
+     * Create a date from SQL
+     *
+     * @param DateTimeInterface|null $dateTime
+     * @return DateTimeImmutable
+     */
+    public function createDateFromSQLTimezone(?DateTimeInterface $dateTime = null) : DateTimeImmutable
+    {
+        $dateTime ??= new DateTimeImmutable();
+        if ($dateTime instanceof DateTimeImmutable) {
+            return $dateTime->setTimezone($this->getSQLTimeZone());
+        }
+        return DateTimeImmutable::createFromInterface($dateTime)->setTimezone($this->getSQLTimeZone());
     }
 
     public function getDSN() : string

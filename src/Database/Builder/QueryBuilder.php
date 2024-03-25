@@ -8,6 +8,7 @@ use Pentagonal\Sso\Core\Database\Connection\Statement;
 use Pentagonal\Sso\Core\Database\Exceptions\QueryException;
 use Stringable;
 use function array_key_exists;
+use function array_keys;
 use function array_unshift;
 use function func_get_args;
 use function implode;
@@ -413,6 +414,18 @@ class QueryBuilder implements Stringable
     }
 
     /**
+     * Set value
+     *
+     * @param string $key
+     * @param string|int|float|bool|Stringable|null $value
+     * @return $this
+     */
+    public function set(string $key, string|int|float|null|bool|Stringable $value) : self
+    {
+        return $this->setValue($key, $value);
+    }
+
+    /**
      * Set values
      *
      * @param array<string, string|int|float|null|bool|Stringable> $values
@@ -441,7 +454,6 @@ class QueryBuilder implements Stringable
                 [$where]
             );
         }
-
         $where->addMultiple($wheres);
         $this->add('where', $where);
         return $this;
@@ -681,7 +693,7 @@ class QueryBuilder implements Stringable
      * @param string $queryPart
      * @return $this
      */
-    public function resetQueryPart(string $queryPart) : self
+    public function resetQueryPart(string $queryPart) : static
     {
         if (!isset($this->parts[$queryPart])) {
             return $this;
@@ -712,9 +724,10 @@ class QueryBuilder implements Stringable
             )
             . ' FROM';
         foreach ($this->parts['table'] as $from) {
-            $fromClause = $this->connection->columnQuote($from['table'])
-                . ' ' .
-                $this->connection->columnQuote($from['alias']);
+            $fromClause = $this->connection->columnQuote($from['table']);
+            if ($from['alias']) {
+                $fromClause .= ' AS ' . $this->connection->columnQuote($from['alias']);
+            }
             if (isset($this->parts['join'][$from['alias']])) {
                 foreach ($this->parts['join'][$from['alias']] as $join) {
                     $fromClause .= ' ' . $join['joinType'] . ' JOIN ' . $join['joinTable'] . ' ' . $join['joinAlias'];
@@ -775,7 +788,12 @@ class QueryBuilder implements Stringable
             . $this->connection->columnQuote($this->parts['table']['alias']);
         $sql = 'UPDATE ' . $table;
         if ($this->parts['values']) {
-            $sql .= ' SET ' . implode(', ', $this->parts['values']);
+            $parts = [];
+            foreach ($this->parts['values'] as $key => $value) {
+                $parts[] = $this->connection->columnQuote($key) . ' = ' . $value;
+            }
+            $sql .= ' SET ';
+            $sql .= implode(', ', $parts);
         }
         if ($this->parts['where']) {
             $sql .= ' WHERE ' . $this->parts['where'];
@@ -806,6 +824,7 @@ class QueryBuilder implements Stringable
         $table = $this->connection->columnQuote($this->parts['table']['table']);
         $sql = 'INSERT INTO ' . $table;
         if ($this->parts['values']) {
+            $sql .= ' (' . implode(', ', $this->connection->columnQuote(array_keys($this->parts['values']))) . ')';
             $sql .= ' VALUES (' . implode(', ', $this->parts['values']) . ')';
         }
         return $sql;
@@ -825,6 +844,7 @@ class QueryBuilder implements Stringable
             self::TYPE_SELECT => $this->getSQLForSelect(),
             self::TYPE_UPDATE => $this->getSQLForUpdate(),
             self::TYPE_DELETE => $this->getSQLForDelete(),
+            self::TYPE_INSERT => $this->getSQLForInsert(),
             default => throw new QueryException('No query type has been defined'),
         };
         $this->sql = $sql;
