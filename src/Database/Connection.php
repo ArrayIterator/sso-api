@@ -80,11 +80,6 @@ class Connection
     private ?string $dsn = null;
 
     /**
-     * @var array<Schema>
-     */
-    private static array $schema = [];
-
-    /**
      * @var ?DateTimeZone
      */
     private ?DateTimeZone $sqlTimeZone = null;
@@ -108,6 +103,20 @@ class Connection
         } catch (Throwable) {
             // pass
         }
+    }
+
+    /**
+     * Create a new connection
+     *
+     * @param Configuration $configuration
+     * @param EventManagerInterface|null $eventManager
+     * @return static
+     */
+    public static function create(
+        Configuration $configuration,
+        ?EventManagerInterface $eventManager = null
+    ) : static {
+        return new static($configuration, $eventManager);
     }
 
     /**

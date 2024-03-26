@@ -99,12 +99,13 @@ abstract class Model extends Result
     private string $aliasTable = 'a';
 
     /**
-     * @var array
+     * @var string
      */
-    private static array $cachedAttribute = [];
-
     protected string $createdColumn = 'created_at';
 
+    /**
+     * @var string
+     */
     protected string $updatedColumn = 'updated_at';
 
     /**
@@ -198,8 +199,18 @@ abstract class Model extends Result
         return $this->connection->getSchema()->getTables()->get($this->table);
     }
 
+    protected function triggerEvent(string $event, ...$args): void
+    {
+        $this->connection->getEventManager()?->trigger(
+            $event,
+            $this,
+            ...$args
+        );
+    }
+
     private function configure(Connection $connection) : void
     {
+        $this->triggerEvent('model.configure.start');
         $prefix = $this->usePrefix
             ? $connection->getConfiguration()->getPrefix()
             : '';
@@ -380,6 +391,7 @@ abstract class Model extends Result
                 );
             }
         }
+        $this->triggerEvent('model.configure.end');
     }
 
     public static function setCurrentConnection(Connection $connection): void
@@ -458,35 +470,40 @@ abstract class Model extends Result
      */
     public function fetch() : static|null|false
     {
-        if ($this->current === false) {
-            return false;
-        }
-
-        if (!$this->statement) {
-            $qb = $this->getQueryBuilder();
-            $where = $qb->getQueryPart('where');
-            if (empty($where) && ($change = $this->getChangedData())) {
-                foreach ($change as $key => $value) {
-                    $this->and($key, '=', $value);
-                }
+        try {
+            $this->triggerEvent('model.fetch.start');
+            if ($this->current === false) {
+                return false;
             }
-            $this->statement = $qb->execute();
-        }
 
-        $current = $this->statement->fetchObject(
-            $this::class,
-            [$this]
-        );
-        if ($this->current instanceof Model) {
-            $this->previous = $this->current;
+            if (!$this->statement) {
+                $qb = $this->getQueryBuilder();
+                $where = $qb->getQueryPart('where');
+                if (empty($where) && ($change = $this->getChangedData())) {
+                    foreach ($change as $key => $value) {
+                        $this->and($key, '=', $value);
+                    }
+                }
+                $this->statement = $qb->execute();
+            }
+
+            $current = $this->statement->fetchObject(
+                $this::class,
+                [$this]
+            );
+            if ($this->current instanceof Model) {
+                $this->previous = $this->current;
+            }
+            $this->incrementResult++;
+            $this->current = $current instanceof Result ? $current : false;
+            if ($this->current === false) {
+                $this->incrementResult--;
+                $this->statement->closeCursor();
+            }
+            return $this->current;
+        } finally {
+            $this->triggerEvent('model.fetch.end', $this->current);
         }
-        $this->incrementResult++;
-        $this->current = $current instanceof Result ? $current : false;
-        if ($this->current === false) {
-            $this->incrementResult--;
-            $this->statement->closeCursor();
-        }
-        return $this->current;
     }
 
     /**
@@ -795,107 +812,112 @@ abstract class Model extends Result
      */
     public function insert(?array $data = null): int
     {
-        $changedData = $this->getChangedData();
-        $data ??= [];
-        foreach ($changedData as $key => $datum) {
-            $theKey = strtolower($key);
-            if (!array_key_exists($theKey, $data)) {
-                $data[$key] = $datum;
-            }
-        }
-        $columns = $this->getObjectTable()->getColumns();
-        $shouldSet = [];
-        $nullable = [];
-        foreach ($columns->getColumns() as $column) {
-            if ($column->isAutoIncrement()
-                || $column->getDefault() !== null
-            ) {
-                continue;
-            }
-
-            $name = strtolower($column->getName());
-            $shouldSet[$name] = $column;
-            if ($column->isNullable()) {
-                $nullable[$name] = null;
-            }
-        }
-        $columnLists = [];
-        foreach ($this->columns as $key => $value) {
-            if (!is_string($value)) {
-                continue;
-            }
-            $value = strtolower($value);
-            $columnLists[$value] = $key;
-        }
-
-        $createdAtColumn = $columns->get($this->createdColumn);
-        if ($createdAtColumn) {
-            $lower = strtolower($createdAtColumn->getName());
-            if (!isset($data[$lower])) {
-                $data[$lower] = $this->connection->createDateFromSQLTimezone();
-            }
-        }
-        $updatedAt = $columns->get($this->updatedColumn);
-        if ($updatedAt && $updatedAt->getDefault() === null) {
-            $lower = strtolower($updatedAt->getName());
-            if (!isset($data[$lower])) {
-                $data[$lower] = $updatedAt->isNullable() ? null : '0000-00-00 00:00:00';
-            }
-        }
-
-        $newData = [];
-        foreach ($data as $key => $value) {
-            /** @noinspection DuplicatedCode */
-            unset($data[$key]);
-            if (!is_string($key)) {
-                continue;
-            }
-            $lower = strtolower($key);
-            $alternateKey = $columnLists[$lower]??null;
-            $column = null;
-            if (!($column = $columns->get($key))) {
-                if (!$alternateKey) {
-                    continue;
-                }
-                $column = $columns->get($alternateKey);
-                if (!$column) {
-                    continue;
+        try {
+            $this->triggerEvent('model.insert.start');
+            $changedData = $this->getChangedData();
+            $data ??= [];
+            foreach ($changedData as $key => $datum) {
+                $theKey = strtolower($key);
+                if (!array_key_exists($theKey, $data)) {
+                    $data[$key] = $datum;
                 }
             }
-            $column ??= $columns->get($key);
-            $key = $column->getName();
-            $key = strtolower($key);
-            unset($shouldSet[$key]);
-            $value = $this->filterColumn('insert', $column, $value);
-            $newData[$key] = $column->getType()->databaseValue($value);
-        }
-        if (!empty($shouldSet)) {
-            foreach ($nullable as $key => $value) {
+            $columns = $this->getObjectTable()->getColumns();
+            $shouldSet = [];
+            $nullable = [];
+            foreach ($columns->getColumns() as $column) {
+                if ($column->isAutoIncrement()
+                    || $column->getDefault() !== null
+                ) {
+                    continue;
+                }
+
+                $name = strtolower($column->getName());
+                $shouldSet[$name] = $column;
+                if ($column->isNullable()) {
+                    $nullable[$name] = null;
+                }
+            }
+            $columnLists = [];
+            foreach ($this->columns as $key => $value) {
+                if (!is_string($value)) {
+                    continue;
+                }
+                $value = strtolower($value);
+                $columnLists[$value] = $key;
+            }
+
+            $createdAtColumn = $columns->get($this->createdColumn);
+            if ($createdAtColumn) {
+                $lower = strtolower($createdAtColumn->getName());
+                if (!isset($data[$lower])) {
+                    $data[$lower] = $this->connection->createDateFromSQLTimezone();
+                }
+            }
+            $updatedAt = $columns->get($this->updatedColumn);
+            if ($updatedAt && $updatedAt->getDefault() === null) {
+                $lower = strtolower($updatedAt->getName());
+                if (!isset($data[$lower])) {
+                    $data[$lower] = $updatedAt->isNullable() ? null : '0000-00-00 00:00:00';
+                }
+            }
+
+            $newData = [];
+            foreach ($data as $key => $value) {
+                /** @noinspection DuplicatedCode */
+                unset($data[$key]);
+                if (!is_string($key)) {
+                    continue;
+                }
+                $lower = strtolower($key);
+                $alternateKey = $columnLists[$lower] ?? null;
+                $column = null;
+                if (!($column = $columns->get($key))) {
+                    if (!$alternateKey) {
+                        continue;
+                    }
+                    $column = $columns->get($alternateKey);
+                    if (!$column) {
+                        continue;
+                    }
+                }
+                $column ??= $columns->get($key);
+                $key = $column->getName();
+                $key = strtolower($key);
                 unset($shouldSet[$key]);
+                $value = $this->filterColumn('insert', $column, $value);
+                $newData[$key] = $column->getType()->databaseValue($value);
             }
-        }
-        if (!empty($shouldSet)) {
-            $shouldSet = array_map(fn ($e) => $e->getName(), $shouldSet);
-            throw new RuntimeException(
-                sprintf(
-                    'Column %s is required',
-                    implode(', ', $shouldSet)
-                )
-            );
-        }
+            if (!empty($shouldSet)) {
+                foreach ($nullable as $key => $value) {
+                    unset($shouldSet[$key]);
+                }
+            }
+            if (!empty($shouldSet)) {
+                $shouldSet = array_map(fn($e) => $e->getName(), $shouldSet);
+                throw new RuntimeException(
+                    sprintf(
+                        'Column %s is required',
+                        implode(', ', $shouldSet)
+                    )
+                );
+            }
 
-        $qb = $this
-            ->getConnection()
-            ->getQueryBuilder()
-            ->insert($this->getTable());
-        foreach ($newData as $key => $value) {
-            $key = $columns->get($key)->getName();
-            $qb->setValue($key, $qb->createNamedParameter($value));
+            $qb = $this
+                ->getConnection()
+                ->getQueryBuilder()
+                ->insert($this->getTable());
+            foreach ($newData as $key => $value) {
+                $key = $columns->get($key)->getName();
+                $qb->setValue($key, $qb->createNamedParameter($value));
+            }
+            $stmt = $qb->execute();
+            $affected = $stmt->rowCount();
+            $stmt->closeCursor();
+            return $affected;
+        } finally {
+            $this->triggerEvent('model.insert.end', $affected??0);
         }
-        $stmt = $qb->execute();
-        $affected = $stmt->rowCount();
-        $stmt->closeCursor();
-        return $affected;
     }
 
     public function update(array $data = null): int
@@ -911,97 +933,102 @@ abstract class Model extends Result
                 'Primary Key Not Found'
             );
         }
-        $data ??= [];
-        $changedData = $this->getChangedData();
-        foreach ($changedData as $key => $datum) {
-            $theKey = strtolower($key);
-            if (!array_key_exists($theKey, $data)) {
-                $data[$key] = $datum;
+        try {
+            $this->triggerEvent('model.update.start');
+            $data ??= [];
+            $changedData = $this->getChangedData();
+            foreach ($changedData as $key => $datum) {
+                $theKey = strtolower($key);
+                if (!array_key_exists($theKey, $data)) {
+                    $data[$key] = $datum;
+                }
             }
-        }
-        $columns = $this->getObjectTable()->getColumns();
-        $columnLists = [];
-        foreach ($this->columns as $key => $value) {
-            if (!is_string($value)) {
-                continue;
-            }
-            $value = strtolower($value);
-            $columnLists[$value] = $key;
-        }
-        $updatedAt = $columns->get($this->updatedColumn);
-        if ($updatedAt && ($this->updateUpdatedAt || $this->forceUpdateUpdatedAt)) {
-            $lower = strtolower($updatedAt->getName());
-            // force update
-            if ($this->forceUpdateUpdatedAt || !isset($data[$lower])) {
-                $data[$lower] = $this->connection->createDateFromSQLTimezone();
-            }
-        }
-
-        $newData = [];
-        foreach ($data as $key => $value) {
-            /** @noinspection DuplicatedCode */
-            unset($data[$key]);
-            if (!is_string($key)) {
-                continue;
-            }
-            $lower = strtolower($key);
-            $alternateKey = $columnLists[$lower]??null;
-            $column = null;
-            if (!($column = $columns->get($key))) {
-                if (!$alternateKey) {
+            $columns = $this->getObjectTable()->getColumns();
+            $columnLists = [];
+            foreach ($this->columns as $key => $value) {
+                if (!is_string($value)) {
                     continue;
                 }
-                $column = $columns->get($alternateKey);
-                if (!$column) {
-                    continue;
+                $value = strtolower($value);
+                $columnLists[$value] = $key;
+            }
+            $updatedAt = $columns->get($this->updatedColumn);
+            if ($updatedAt && ($this->updateUpdatedAt || $this->forceUpdateUpdatedAt)) {
+                $lower = strtolower($updatedAt->getName());
+                // force update
+                if ($this->forceUpdateUpdatedAt || !isset($data[$lower])) {
+                    $data[$lower] = $this->connection->createDateFromSQLTimezone();
                 }
             }
 
-            $column ??= $columns->get($key);
-            $key = $column->getName();
-            $key = strtolower($key);
-            $value = $this->filterColumn('update', $column, $value);
-            $newData[$key] = $column->getType()->databaseValue($value);
-        }
+            $newData = [];
+            foreach ($data as $key => $value) {
+                /** @noinspection DuplicatedCode */
+                unset($data[$key]);
+                if (!is_string($key)) {
+                    continue;
+                }
+                $lower = strtolower($key);
+                $alternateKey = $columnLists[$lower] ?? null;
+                $column = null;
+                if (!($column = $columns->get($key))) {
+                    if (!$alternateKey) {
+                        continue;
+                    }
+                    $column = $columns->get($alternateKey);
+                    if (!$column) {
+                        continue;
+                    }
+                }
 
-        if (empty($newData)) {
-            return 0;
-        }
-
-        $qb = $this
-            ->getConnection()
-            ->getQueryBuilder()
-            ->update($this->getTable());
-        foreach ($newData as $key => $value) {
-            $key = $columns->get($key)->getName();
-            $key = strtolower($key);
-            $qb->setValue($key, $qb->createNamedParameter($value));
-        }
-        $connection = $this->getConnection();
-        $exp = $qb->expr();
-        foreach ($primaryKeys as $key => $value) {
-            $qb->andWhere(
-                $exp->eq(
-                    $connection->columnQuote($key),
-                    $qb->createNamedParameter($this->get($value))
-                )
-            );
-        }
-
-        $stmt = $qb->execute();
-        $affected = $stmt->rowCount();
-        $stmt->closeCursor();
-        if ($affected > 0) {
-            $this->reset();
-            $this->changedData = [];
-            // re-fetch
-            $fetch = $this->fetch();
-            if ($fetch) {
-                $this->data = $fetch->getData();
-                $this->originalData = $fetch->getOriginalData();
+                $column ??= $columns->get($key);
+                $key = $column->getName();
+                $key = strtolower($key);
+                $value = $this->filterColumn('update', $column, $value);
+                $newData[$key] = $column->getType()->databaseValue($value);
             }
+
+            if (empty($newData)) {
+                return 0;
+            }
+
+            $qb = $this
+                ->getConnection()
+                ->getQueryBuilder()
+                ->update($this->getTable());
+            foreach ($newData as $key => $value) {
+                $key = $columns->get($key)->getName();
+                $key = strtolower($key);
+                $qb->setValue($key, $qb->createNamedParameter($value));
+            }
+            $connection = $this->getConnection();
+            $exp = $qb->expr();
+            foreach ($primaryKeys as $key => $value) {
+                $qb->andWhere(
+                    $exp->eq(
+                        $connection->columnQuote($key),
+                        $qb->createNamedParameter($this->get($value))
+                    )
+                );
+            }
+
+            $stmt = $qb->execute();
+            $affected = $stmt->rowCount();
+            $stmt->closeCursor();
+            if ($affected > 0) {
+                $this->reset();
+                $this->changedData = [];
+                // re-fetch
+                $fetch = $this->fetch();
+                if ($fetch) {
+                    $this->data = $fetch->getData();
+                    $this->originalData = $fetch->getOriginalData();
+                }
+            }
+            return $affected;
+        } finally {
+            $this->triggerEvent('model.update.end', $affected??0);
         }
-        return $affected;
     }
 
     /**

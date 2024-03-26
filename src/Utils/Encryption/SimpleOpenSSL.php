@@ -8,6 +8,7 @@ namespace Pentagonal\Sso\Core\Utils\Encryption;
 
 use Pentagonal\Sso\Core\Exceptions\InvalidArgumentException;
 use function array_map;
+use function get_object_vars;
 use function openssl_cipher_iv_length;
 use function sprintf;
 use function strlen;
@@ -216,7 +217,7 @@ class SimpleOpenSSL
      * @param string $cipher
      * @return int|null
      */
-    public static function getIVLength(string $cipher): ?int
+    public static function ivLength(string $cipher): ?int
     {
         $cipher = self::normalizeCipher($cipher);
         return openssl_cipher_iv_length($cipher)?:null;
@@ -271,6 +272,11 @@ class SimpleOpenSSL
         return $this->options;
     }
 
+    public function getIvLength() : int
+    {
+        return self::ivLength($this->getCipher());
+    }
+
     /**
      * Encrypt
      *
@@ -281,7 +287,7 @@ class SimpleOpenSSL
     {
         $iv = $this->getIv();
         $cipher = $this->getCipher();
-        $ivLength = self::getIVLength($cipher);
+        $ivLength = $this->getIvLength();
         if (!$iv) {
             $iv = self::generateIv($ivLength);
             $this->iv = $iv;
@@ -365,7 +371,7 @@ class SimpleOpenSSL
         }
         $cipher = self::normalizeCipher($cipher);
         $new->cipher = $cipher;
-        if ($new->iv && self::getIVLength($cipher) !== strlen($new->iv)) {
+        if ($new->iv && self::ivLength($cipher) !== strlen($new->iv)) {
             $new->iv = null;
         }
         return $new;
@@ -379,7 +385,7 @@ class SimpleOpenSSL
     {
         $new = clone $this;
         $new->iv = $iv;
-        $ivLength = self::getIVLength($new->cipher);
+        $ivLength = self::ivLength($new->cipher);
         if ($new->iv && $ivLength !== strlen($new->iv)) {
             throw new InvalidArgumentException(
                 sprintf(
@@ -424,7 +430,7 @@ class SimpleOpenSSL
         string $cipher = self::DEFAULT_CIPHER,
         int $options = 0
     ): array {
-        $obj = new static($key, $cipher, $iv, $options);
+        $obj  = self::create($key, $cipher, $iv, $options);
         $data = $obj->encrypt($data);
         return [
             $obj->getIv(),
@@ -453,6 +459,30 @@ class SimpleOpenSSL
         $options ??= strlen($data) > 0 && preg_match('/[^\x20-\x7E]/', $data)
             ? OPENSSL_RAW_DATA
             : 0;
-        return (new static($key, $cipher, $iv, $options))->decrypt($data);
+        return self::create($key, $cipher, $iv, $options)->decrypt($data);
+    }
+
+    /**
+     * @param string $key
+     * @param string $cipher
+     * @param string|null $iv
+     * @param int $options
+     * @return static
+     */
+    public static function create(
+        string $key,
+        string $cipher = self::DEFAULT_CIPHER,
+        ?string $iv = null,
+        int $options = 0
+    ): static {
+        return new static($key, $cipher, $iv, $options);
+    }
+
+    public function __debugInfo(): ?array
+    {
+        $data = get_object_vars($this);
+        $data['key'] = '<redacted>';
+        $data['iv'] = '<redacted>';
+        return $data;
     }
 }

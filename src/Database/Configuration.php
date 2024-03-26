@@ -609,7 +609,7 @@ class Configuration implements Serializable
     {
         $vars = get_object_vars($this);
         $iv = SimpleOpenSSL::generateIV(
-            SimpleOpenSSL::getIVLength(SimpleOpenSSL::DEFAULT_CIPHER)
+            SimpleOpenSSL::ivLength(SimpleOpenSSL::DEFAULT_CIPHER)
         );
         $vars['username'] = SimpleOpenSSL::encryptData(
             $vars['username'],
