@@ -11,6 +11,6 @@ return (function () {
     // phpcs:disable PSR1.Files.SideEffects
     define('PUBLIC_PATH', __DIR__);
 
-    $loader = require \ROOT_PATH .'/loader.php';
+    $loader = require __DIR__ .'/../loader.php';
     return $loader->run();
 })();
