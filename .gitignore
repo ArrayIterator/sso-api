@@ -101,6 +101,8 @@ config.php
 .config.php
 # ignore php ini user
 .user.ini
+config.yml
+config.yaml
 
 /storage/*
 !/storage/.htaccess

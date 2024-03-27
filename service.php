@@ -9,14 +9,12 @@ use const DIRECTORY_SEPARATOR;
 
 return (function () {
 
+    require __DIR__ .'/vendor/autoload.php';
+
     // phpcs:disable PSR1.Files.SideEffects
     define('ROOT_PATH', __DIR__);
 
-    if (! defined('APP_PATH')) {
-        define('APP_PATH', __DIR__ . DIRECTORY_SEPARATOR . 'app');
-    }
-
-    require __DIR__ .'/vendor/autoload.php';
+    define('APP_PATH', __DIR__ . DIRECTORY_SEPARATOR . 'app');
 
     return new Service();
 })();

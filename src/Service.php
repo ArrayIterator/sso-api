@@ -298,7 +298,10 @@ class Service implements RouteMethodInterface
         return $this->router->group($pattern, $callback);
     }
 
-    public function getContainer() : ContainerInterface
+    /**
+     * @return ContainerInterface|Container
+     */
+    public function getContainer() : ContainerInterface|Container
     {
         return $this->container;
     }

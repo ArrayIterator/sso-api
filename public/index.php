@@ -11,6 +11,11 @@ return (function () {
     // phpcs:disable PSR1.Files.SideEffects
     define('PUBLIC_PATH', __DIR__);
 
-    $loader = require __DIR__ .'/../loader.php';
-    return $loader->run();
+    /**
+     * @var \Pentagonal\Sso\Core\Service $service
+     * @noinspection PhpFullyQualifiedNameUsageInspection
+     */
+    $service = require __DIR__ . '/../service.php';
+
+    return $service->run();
 })();
