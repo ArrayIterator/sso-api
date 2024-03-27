@@ -3,16 +3,22 @@ declare(strict_types=1);
 
 namespace Pentagonal\Sso\Core\Routes\Exceptions;
 
-use Pentagonal\Sso\Core\Exceptions\MethodNotAllowedException;
+use Pentagonal\Sso\Core\Exceptions\HttpMethodNotAllowedException;
 use Pentagonal\Sso\Core\Routes\Route;
 use Psr\Http\Message\ServerRequestInterface;
 use Throwable;
 use function sprintf;
 
-class RouteMethodNotAllowedException extends MethodNotAllowedException
+class RouteHttpMethodNotAllowedException extends HttpMethodNotAllowedException
 {
+    /**
+     * @var ServerRequestInterface
+     */
     protected ServerRequestInterface $request;
 
+    /**
+     * @var Route
+     */
     protected Route $route;
 
     public function __construct(
@@ -33,16 +39,11 @@ class RouteMethodNotAllowedException extends MethodNotAllowedException
                 implode(', ', $allowedMethods)
             )
         );
-        parent::__construct($message, $code, $allowedMethods, $previous);
+        parent::__construct($request, $message, $code, $allowedMethods, $previous);
     }
 
     public function getRoute() : Route
     {
         return $this->route;
-    }
-
-    public function getRequest() : ServerRequestInterface
-    {
-        return $this->request;
     }
 }

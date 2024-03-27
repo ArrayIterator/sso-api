@@ -18,10 +18,12 @@ class MiddlewareServiceDispatcher implements MiddlewareServiceDispatcherInterfac
     private ContainerInterface $container;
 
     public function __construct(
-        RequestHandlerInterface $handler,
-        ?ContainerInterface $container = null
+        ?ContainerInterface $container = null,
+        ?RequestHandlerInterface $handler = null
     ) {
-        $this->setStack($handler);
+        if ($handler) {
+            $this->setStack($handler);
+        }
         $this->container = $container;
     }
 
@@ -33,6 +35,10 @@ class MiddlewareServiceDispatcher implements MiddlewareServiceDispatcherInterfac
 
     public function add(callable|MiddlewareInterface $middleware): static
     {
+        if (!isset($this->stack)) {
+            throw new RuntimeException('Stack is not set');
+        }
+
         if ($middleware instanceof Closure) {
             $middleware = $middleware->bindTo($this->container);
         }

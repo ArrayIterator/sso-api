@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace Pentagonal\Sso\Core\Routes\Exceptions;
 
-use Pentagonal\Sso\Core\Exceptions\NotFoundException;
+use Pentagonal\Sso\Core\Exceptions\HttpNotFoundException;
 use Psr\Http\Message\ServerRequestInterface;
 use Throwable;
 
-class RouteNotFoundException extends NotFoundException
+class RouteHttpNotFoundException extends HttpNotFoundException
 {
     protected ServerRequestInterface $request;
 
@@ -19,7 +19,7 @@ class RouteNotFoundException extends NotFoundException
     ) {
         $message ??= 'Route not found';
         $this->request = $request;
-        parent::__construct($message, $code, $previous);
+        parent::__construct($request, $message, $code, $previous);
     }
 
     public function getRequest() : ServerRequestInterface

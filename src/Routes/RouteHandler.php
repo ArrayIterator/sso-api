@@ -4,8 +4,9 @@ declare(strict_types=1);
 namespace Pentagonal\Sso\Core\Routes;
 
 use Pentagonal\Sso\Core\Exceptions\RuntimeException;
-use Pentagonal\Sso\Core\Routes\Exceptions\RouteMethodNotAllowedException;
-use Pentagonal\Sso\Core\Routes\Exceptions\RouteNotFoundException;
+use Pentagonal\Sso\Core\Routes\Exceptions\RouteErrorException;
+use Pentagonal\Sso\Core\Routes\Exceptions\RouteHttpMethodNotAllowedException;
+use Pentagonal\Sso\Core\Routes\Exceptions\RouteHttpNotFoundException;
 use Pentagonal\Sso\Core\Routes\Interfaces\RouteResultInterface;
 use Pentagonal\Sso\Core\Routes\Interfaces\RouterInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -20,7 +21,7 @@ readonly class RouteHandler implements RequestHandlerInterface
     }
 
     /**
-     * @throws RouteNotFoundException
+     * @throws RouteHttpNotFoundException
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
@@ -38,29 +39,32 @@ readonly class RouteHandler implements RequestHandlerInterface
         }
 
         $request = $result->getRequest();
+        $status = $result->getRouteStatus();
         $route = $result->getRoute();
-        switch ($result->getRouteStatus()) {
-            case RouteResultInterface::FOUND:
-                return $routes->getRouteDispatcher()->dispatch(
-                    $route->getCallback(),
-                    $request,
-                    $routes->getResponseFactory(),
-                    $result->getMatchedParams(),
-                    $route
-                );
-            case RouteResultInterface::METHOD_NOT_ALLOWED:
-                throw new RouteMethodNotAllowedException(
-                    $request,
-                    $route
-                );
-            case RouteResultInterface::NOT_FOUND:
-                throw new RouteNotFoundException(
-                    $request
-                );
-            default:
-                throw new RuntimeException(
-                    'There was an error when resolve routing'
-                );
+        if (!$route || $status === RouteResultInterface::NOT_FOUND) {
+            throw new RouteHttpNotFoundException(
+                $request
+            );
         }
+        if ($status === RouteResultInterface::FOUND) {
+            return $routes->getRouteDispatcher()->dispatch(
+                $route->getCallback(),
+                $request,
+                $routes->getResponseFactory(),
+                $result->getMatchedParams(),
+                $route
+            );
+        }
+        if ($status === RouteResultInterface::METHOD_NOT_ALLOWED) {
+            throw new RouteHttpMethodNotAllowedException(
+                $request,
+                $route
+            );
+        }
+        throw new RouteErrorException(
+            $request,
+            $route,
+            'There was an error when resolve routing'
+        );
     }
 }

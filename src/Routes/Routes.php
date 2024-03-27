@@ -12,6 +12,7 @@ use Pentagonal\Sso\Core\Services\Interfaces\EventManagerInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Throwable;
 use function addcslashes;
 use function in_array;
 use function preg_match;
@@ -62,10 +63,34 @@ class Routes implements RoutesInterface
         ?ResponseFactoryInterface $responseFactory = null,
         ?RouteDispatcherInterface $routeDispatcher = null
     ) {
+        if (!$responseFactory) {
+            try {
+                if ($container->has(ResponseFactoryInterface::class)) {
+                    $responseFactory = $container->get(ResponseFactoryInterface::class);
+                }
+            } catch (Throwable) {
+                $responseFactory = null;
+            }
+            if (!$responseFactory instanceof ResponseFactoryInterface) {
+                $responseFactory = new HttpFactory();
+            }
+        }
+        if (!$routeDispatcher) {
+            try {
+                if ($container->has(RouteDispatcherInterface::class)) {
+                    $routeDispatcher = $container->get(RouteDispatcherInterface::class);
+                }
+            } catch (Throwable) {
+                $routeDispatcher = null;
+            }
+            if (!$routeDispatcher instanceof RouteDispatcherInterface) {
+                $routeDispatcher = new RouteDispatcher($container);
+            }
+        }
         $this->container = $container;
         $this->setEventManager($manager);
-        $this->setResponseFactory($responseFactory ?? new HttpFactory());
-        $this->setRouteDispatcher($routeDispatcher ?? new RouteDispatcher($container));
+        $this->setResponseFactory($responseFactory);
+        $this->setRouteDispatcher($routeDispatcher);
     }
 
     public function getContainer() : ?ContainerInterface

@@ -6,28 +6,104 @@ namespace Pentagonal\Sso\Core;
 use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\Psr7\ServerRequest;
 use League\Container\Container;
+use Pentagonal\Sso\Core\Formatters\Interfaces\JsonFormatterInterface;
+use Pentagonal\Sso\Core\Formatters\Json;
+use Pentagonal\Sso\Core\Handlers\ExceptionHandler;
+use Pentagonal\Sso\Core\Handlers\Interfaces\ExceptionHandlerInterface;
 use Pentagonal\Sso\Core\Routes\Interfaces\ControllerInterface;
 use Pentagonal\Sso\Core\Routes\Interfaces\RouteDispatcherInterface;
 use Pentagonal\Sso\Core\Routes\Interfaces\RouteInterface;
 use Pentagonal\Sso\Core\Routes\Interfaces\RouteMethodInterface;
 use Pentagonal\Sso\Core\Routes\Interfaces\RouterInterface;
 use Pentagonal\Sso\Core\Routes\Interfaces\RoutesInterface;
+use Pentagonal\Sso\Core\Routes\RouteDispatcher;
 use Pentagonal\Sso\Core\Routes\RouteHandler;
+use Pentagonal\Sso\Core\Routes\Router;
+use Pentagonal\Sso\Core\Routes\Routes;
+use Pentagonal\Sso\Core\Routes\RoutingMiddleware;
 use Pentagonal\Sso\Core\Routes\Traits\RouteMethodTrait;
 use Pentagonal\Sso\Core\Services\EventManager;
 use Pentagonal\Sso\Core\Services\Interfaces\EventManagerInterface;
 use Pentagonal\Sso\Core\Services\Interfaces\MiddlewareServiceDispatcherInterface;
 use Pentagonal\Sso\Core\Services\Interfaces\ResponseEmitterInterface;
 use Pentagonal\Sso\Core\Services\MiddlewareServiceDispatcher;
+use Pentagonal\Sso\Core\Services\ResponseEmitter;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use Throwable;
+use function is_array;
+use function next;
+use function reset;
 
 class Service implements RouteMethodInterface
 {
     use RouteMethodTrait;
+
+    /**
+     * The container components
+     *
+     * @var array
+     */
+    final public const COMPONENTS = [
+        ContainerInterface::class => Container::class,
+        EventManagerInterface::class => EventManager::class,
+        RequestHandlerInterface::class => [
+            RouteHandler::class,
+            [
+                RouterInterface::class
+            ]
+        ],
+        ResponseFactoryInterface::class => HttpFactory::class,
+        StreamFactoryInterface::class => HttpFactory::class,
+        RouteDispatcherInterface::class => RouteDispatcher::class,
+        MiddlewareServiceDispatcherInterface::class => [
+            MiddlewareServiceDispatcher::class,
+            [
+                ContainerInterface::class,
+                RequestHandlerInterface::class
+            ]
+        ],
+        RoutesInterface::class => [
+            Routes::class,
+            [
+                ContainerInterface::class,
+                EventManagerInterface::class,
+                ResponseFactoryInterface::class,
+                RouteDispatcherInterface::class
+            ]
+        ],
+        RouterInterface::class => [
+            Router::class,
+            [
+                RoutesInterface::class
+            ]
+        ],
+        ResponseEmitterInterface::class => [
+            ResponseEmitter::class,
+            [
+                EventManagerInterface::class
+            ]
+        ],
+        Service::class => [
+            Service::class,
+            [
+                RouterInterface::class,
+                EventManagerInterface::class,
+                MiddlewareServiceDispatcherInterface::class,
+            ]
+        ],
+        JsonFormatterInterface::class => [
+            Json::class,
+            [
+                EventManagerInterface::class
+            ]
+        ]
+    ];
 
     /**
      * @var EventManagerInterface
@@ -44,103 +120,126 @@ class Service implements RouteMethodInterface
      */
     private ContainerInterface $container;
 
+    /**
+     * @var MiddlewareServiceDispatcherInterface
+     */
     private MiddlewareServiceDispatcherInterface $middlewareDispatcher;
 
     /**
+     * @var ExceptionHandlerInterface
+     */
+    private ExceptionHandlerInterface $handler;
+
+    /**
      * Service constructor.
-     *
-     * @throws \Psr\Container\ContainerExceptionInterface
-     * @throws \Psr\Container\NotFoundExceptionInterface
      */
     public function __construct(
-        ?ContainerInterface $container = null,
         ?RouterInterface $router = null,
         ?EventManagerInterface $eventManager = null,
         ?MiddlewareServiceDispatcherInterface $dispatcher = null
     ) {
-        $container = $container ?? new Container();
-        $router ??= $container->has(
-            RouterInterface::class
-        ) ? $container->get(
-            RouterInterface::class
-        ) : null;
-        $eventManager ??= $container->has(
-            EventManagerInterface::class
-        ) ? $container->get(
-            EventManagerInterface::class
-        ) : null;
-        $routeDispatcher = $container->has(
-            RouteDispatcherInterface::class
-        ) ? $container->get(
-            RouteDispatcherInterface::class
-        ) : null;
-        if (!$routeDispatcher instanceof RouteDispatcherInterface) {
-            $routeDispatcher = new Routes\RouteDispatcher($container);
-        }
-        $responseFactory = $container->has(
-            ResponseFactoryInterface::class
-        ) ? $container->get(
-            ResponseFactoryInterface::class
-        ) : null;
-        if (!$responseFactory instanceof ResponseFactoryInterface) {
-            $responseFactory = new HttpFactory();
-        }
-        if (!$router instanceof RouterInterface) {
-            $routes = $container->has(RoutesInterface::class)
-                ? $container->get(RoutesInterface::class)
-                : null;
-            if (!$routes instanceof RoutesInterface) {
-                $routes = new Routes\Routes(
-                    $container,
-                    $eventManager,
-                    $responseFactory,
-                    $routeDispatcher
-                );
-            }
-            $router = new Routes\Router($routes);
-        }
-
-        if (!$eventManager instanceof EventManagerInterface) {
-            $eventManager = $router->getRoutes()->getEventManager();
-            if (!$eventManager) {
-                $eventManager = new EventManager();
-                $router->getRoutes()->setEventManager($eventManager);
-            }
-        }
-
-        if (!$container->has(EventManagerInterface::class)) {
-            $container->add(EventManagerInterface::class, $eventManager);
-        }
-        if (!$container->has(RouterInterface::class)) {
-            $container->add(RouterInterface::class, $router);
-        }
-        if (!$container->has(ResponseFactoryInterface::class)) {
-            $container->add(ResponseFactoryInterface::class, $responseFactory);
-        }
-
-        $routeHandler = new RouteHandler($router);
-        if (!$dispatcher) {
-            $dispatcher = new MiddlewareServiceDispatcher($routeHandler, $container);
-        }
+        $container = new Container();
+        $this->registerDefaultComponents($container, $router, $eventManager, $dispatcher);
+        $router ??= $container->get(RouterInterface::class);
+        $eventManager ??= $container->get(EventManagerInterface::class);
+        $dispatcher ??= $container->get(MiddlewareServiceDispatcherInterface::class);
+        $routeHandler = $container->get(RequestHandlerInterface::class);
 
         $this->router = $router;
         $this->middlewareDispatcher = $dispatcher->setStack($routeHandler);
         $this->container = $container;
         $this->eventManager = $eventManager;
     }
+
+    /**
+     * Register default components
+     *
+     * @param Container $container
+     * @param RouterInterface|null $router
+     * @param EventManagerInterface|null $eventManager
+     * @param MiddlewareServiceDispatcherInterface|null $dispatcher
+     */
+    private function registerDefaultComponents(
+        Container $container,
+        ?RouterInterface $router = null,
+        ?EventManagerInterface $eventManager = null,
+        ?MiddlewareServiceDispatcherInterface $dispatcher = null
+    ): void {
+
+        // trigger before register
+        $eventManager?->trigger('service.components.register.before');
+
+        $components = self::COMPONENTS;
+        $components[ContainerInterface::class] = $container;
+        if ($router) {
+            $components[RouterInterface::class] = $router;
+        }
+        if ($eventManager) {
+            $components[EventManagerInterface::class] = $eventManager;
+        }
+        if ($dispatcher) {
+            $components[MiddlewareServiceDispatcherInterface::class] = $dispatcher;
+        }
+
+        foreach ($components as $key => $value) {
+            if (is_array($value)) {
+                $className = reset($value);
+                $args = next($value);
+                $definition = $container->addShared($key, $className);
+                if (is_array($args)) {
+                    $definition->addArguments($args);
+                } else {
+                    $definition->addArgument($args);
+                }
+                continue;
+            }
+            $container->addShared($key, $value);
+        }
+
+        $container
+            ->get(EventManagerInterface::class)
+            ->trigger(
+                'service.components.register.after',
+                $container
+            );
+    }
+
+    /**
+     * Get Router
+     *
+     * @return RouterInterface
+     */
     public function getRouter() : RouterInterface
     {
         return $this->router;
     }
 
+    /**
+     * Get Middleware Dispatcher
+     *
+     * @return MiddlewareServiceDispatcherInterface
+     */
     public function getMiddlewareDispatcher() : MiddlewareServiceDispatcherInterface
     {
         return $this->middlewareDispatcher;
     }
 
+    /**
+     * Get Event Manager
+     *
+     * @return EventManagerInterface
+     */
     public function getEventManager() : EventManagerInterface
     {
         return $this->eventManager;
+    }
+
+    /**
+     * @return ExceptionHandlerInterface
+     */
+    public function getExceptionHandler() : ExceptionHandlerInterface
+    {
+        return $this->handler ??= new ExceptionHandler();
     }
 
     /**
@@ -148,9 +247,7 @@ class Service implements RouteMethodInterface
      */
     public function addRoutingMiddleware(): static
     {
-        $middleware = new Routes\RoutingMiddleware(
-            $this->router->getRoutes()
-        );
+        $middleware = new RoutingMiddleware($this->router->getRoutes());
         return $this->add($middleware);
     }
 
@@ -213,22 +310,30 @@ class Service implements RouteMethodInterface
      * @return ResponseInterface
      * @throws \Psr\Container\ContainerExceptionInterface
      * @throws \Psr\Container\NotFoundExceptionInterface
+     * @noinspection PhpFullyQualifiedNameUsageInspection
      */
     public function run(?ServerRequestInterface $request = null) : ResponseInterface
     {
         $request ??= ServerRequest::fromGlobals();
         try {
             $request = $request->withAttribute(
-                'worker_start',
+                'service.worker.start',
                 microtime(true)
             );
             $this->getEventManager()?->trigger(
-                'worker.start',
+                'service.worker.start',
                 $this
             );
             $container = $this->getContainer();
             $request = $request->withAttribute('container', $container);
-            $response = $this->middlewareDispatcher->handle($request);
+            $exceptionHandler = $this->getExceptionHandler();
+
+            try {
+                $response = $this->middlewareDispatcher->handle($request);
+            } catch (Throwable $exception) {
+                $response = $exceptionHandler->handle($request, $exception);
+            }
+
             $emitter = $container->has(ResponseEmitterInterface::class)
                 ? $container->get(ResponseEmitterInterface::class)
                 : null;
@@ -239,7 +344,7 @@ class Service implements RouteMethodInterface
                 );
         } finally {
             $this->getEventManager()?->trigger(
-                'worker.end',
+                'service.worker.end',
                 $this,
                 $response ?? null
             );
